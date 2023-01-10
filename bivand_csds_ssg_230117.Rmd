@@ -312,6 +312,8 @@ knitr::include_graphics("fig2_p7.png")
 
 ## The `evolution` project
 
+- `"Spatial"` classes defined in **sp**, and their methods will remain but not under active development
+
 - Before **rgeos** and **rgdal** retire, existing ties that package **sp** has to **rgdal** and **rgeos** will be replaced by ties to package **sf**
 
 - This involves for example validation of coordinate reference system identifiers, and checking whether rings are holes or exterior rings
@@ -511,6 +513,17 @@ tipsae
 
 - The target is full archiving by the end of October 2023, and switching **sp** to evolution status `2` (reliance on `Suggests:` **sf**, but leaving retiring packages `Suggests:` for a further four months) during June 2023
 
+## What you have to do now
+
+- Since you are reading/seeing this, you've started preparing for changes affecting your workflows and packages you may use or maintain
+
+- If you have workflows or packages you maintain using the retiring packages directly, you should take steps to replace them, for example replacing `rgdal::readOGR()` with `as(st_read(), "Spatial")` as in https://github.com/rsbivand/sf_asdar2ed
+
+- If your work does not involve the retiring packages directly, but packages you use do so, consider keeping the installed retiring packages in a separate library, and testing that your work is unaffected if that library is not on the library path
+
+- Do use the `"_SP_EVOLUTION_STATUS_"` environment variable if your work involves **sp** to check whether you can continue working without the retiring packages
+
+- Consider migrating **sp** workflows to **sf** and **raster** workflows to **terra**
 
 
 # Aftermatter
