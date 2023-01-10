@@ -15,6 +15,7 @@ link-citations: yes
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, paged.print=FALSE)
+.libPaths(c(.libPaths()[1], paste(.libPaths()[1], "_retiring", sep="")))
 ```
 
 # Introduction
@@ -190,7 +191,7 @@ GridsDatums[grep("United States", GridsDatums$country),]
 GridsDatums[grep("Norway", GridsDatums$country),]
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, out.width="600px"}
 knitr::include_graphics('NGO.png')
 ```
 
@@ -502,24 +503,66 @@ The **rgdal** package integrated **GDAL** and work by Barry Rowlingson on interf
 
 So **sp** used PROJ.4 strings, and from 2006, used PROJ.4 to check whether the string given by the user was valid:
 
-```{r echo=FALSE}
+```{r echo=FALSE, out.width="1068px"}
 knitr::include_graphics('Screenshot_20230110-144712.png')
 ```
 
 When reading raster or vector data objects, the CRS was read from the data source. Often ESRI Shapefiles omitted `*.prj` files, and this was represented as a missing CRS, a character `NA` in place of a valid PROJ.4 string. 
 
-We've established that we should have preferred WKT over PROJ strings at least a decade ago: https://lists.osgeo.org/pipermail/gdal-dev/2012-November/034558.html (read the last paragraph), and possibly even earlier.
+We've established that we should have preferred WKT over PROJ strings at least a decade ago: https://lists.osgeo.org/pipermail/gdal-dev/2012-November/034558.html (read the last paragraph), and possibly even earlier. However, when a re-implementation of classes for spatial data was being discussed 2015-2017 (@sf-rj), the CRS representation issue was not given priority, and CRS were represented as PROJ.4 strings or as spatial reference identity numbers (SRID), most often EPSG codes, with look-up through `OGRSpatialReference` objects in GDAL.
 
+Following the introduction of WKT2:2019, **sp** and **sf** moved to add the new representation to existing mechanisms; **raster** adopted the **sp** `"CRS"` changes, and **terra** also adopted WKT2:2019. **rgdal** was used to prototype some of the alternatives.
 
 ### The **sf** and **stars** packages
+
+Since **sf** called out to `OGRSpatialReference` to provide CRS object instantiation before WKT2:2019, it was logical to follow the same approach as PR$\phi$J and GDAL became more deeply integrated in the barn-raising process. We can check the versions of external software, here looking at the legacy `proj.4` entry (same as `PROJ`), the `GDAL` entry, and the `USE_PROJ_H` entry:
+
+```{r}
+sf::sf_extSoftVersion()
+```
+If we print to console the look-up value of `"OGC:CRS84"`, we se that it is accessed via GDAL:
 
 ```{r}
 sf::st_crs("OGC:CRS84")
 ```
+For backward compatibility purposes, it can also be rendered in various formats:
+
+```{r}
+sf::st_crs("OGC:CRS84")$proj4string
+```
+
+```{r}
+cat(sf::st_crs("OGC:CRS84")$wkt, "\n")
+```
+
+The EPSG code is not available, as EPSG is not the authority for this CRS:
+
+```{r}
+sf::st_crs("OGC:CRS84")$epsg
+```
+We can also coerce the `"crs"` object from **sf** to an `"CRS"` object as used by **sp** and **raster**:
+
+```{r}
+as(sf::st_crs("OGC:CRS84"), "CRS")
+```
 
 ### Working in S2 or R2
 
+When using a geographical CRS, many topological predicates and operations, as well as spatial indexing, that may readily be performed using GEOS (planar, R2) cannot be used. The **s2** package interfaces the S2 Geometry library, providing fast spatial indexing , predicates and operations on the sphere. When using **sf**, `sf_use_s2()` is by  default `TRUE`, and **s2** will be used in place of GEOS: 
+
+```{r}
+sf::st_is_longlat(sf::st_crs("OGC:CRS84"))
+```
+```{r}
+sf::st_is_longlat(sf::st_crs("ESRI:104000"))
+```
+The background is described in https://r-spatial.org/r/2020/06/17/s2.html and https://r-spatial.org/book/04-Spherical.html. The main consequences are felt when our common assumption that a straight line between two points (which holds on the plane) is challenged on the sphere. Distances are generally not a problem, but topological operations on objects with a higher dimension than 0 may need re-noding to avoid curved slivers. Since **s2** is available, treating S2 as R2 is no longer defensible.
+
+
+
 ### The **terra** package
+
+The **terra** package also uses `OGRSpatialReference` for instantiating CRS objects, both for vector and raster objects:
 
 ```{r}
 v <- terra::vect()
@@ -527,11 +570,60 @@ terra::crs(v) <- "OGC:CRS84"
 cat(terra::crs(v), "\n")
 ```
 
-### The **sp** and **raster** packages
+```{r}
+r <- terra::rast()
+terra::crs(r) <- "OGC:CRS84"
+cat(terra::crs(r), "\n")
+```
+Both objects can be coerced to `"sf"` or `"stars"` objects respectively, and rge inverse coercion is, of course, supported:
+
+```{r}
+sf::st_crs(sf::st_as_sf(v))
+```
+
+```{r}
+sf::st_crs(stars::st_as_stars(r))
+```
+
 
 
 ### Handling `"CRS"` objects from the **sp** package when **rgdal** has retired
 
+https://github.com/rsbivand/sp/tree/internalise_status
+
+```{r}
+sp::get_evolution_status()
+```
+
+
+```{r}
+sf::st_crs(sp::CRS("OGC:CRS84"), use_cache=FALSE)
+```
+
+```{r}
+sp::set_evolution_status(2L)
+```
+
+```{r}
+sf::st_crs(sp::CRS("OGC:CRS84"))
+```
+
+```{r}
+sf::st_crs(sp::CRS("OGC:CRS84", use_cache=FALSE))
+```
+
+```{r}
+sp::set_evolution_status(0L)
+```
+
+
+### The **sp** and **raster** packages
+
+```{r}
+r <- raster::raster()
+raster::crs(r) <- "OGC:CRS84"
+raster::crs(r)
+```
 
 ## Discovering transformation pipelines in **sf**
 
