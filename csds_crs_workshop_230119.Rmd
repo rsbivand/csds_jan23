@@ -488,9 +488,27 @@ eval(parse(text=clrk66["ell"]))
 print(sqrt((a^2-b^2)/a^2), digits=10)
 ```
 
+This is the WKT2:2019 representation of the (minimalist) PROJ.4 string:
+
 ```{bash}
 projinfo "+proj=longlat +ellps=clrk66 +type=crs"
 ```
+
+### Antecedents for PROJ use in R packages
+
+As @pebesma+bivand:05 present the nascent **sp** package (the role of the Vienna DCS 2003 conference is also depicted by @bivand:21, https://www.r-project.org/conferences/DSC-2003//Proceedings/index.html, https://www.r-project.org/conferences/DSC-2003//Proceedings/Bivand.txt), the choice of PROJ.4 as the `"projargs"` slot of `"CRS"` objects *just happened*. From 1998 to 2005, quite a lot was occurring, including contact with GRASS GIS, which had started interfacing PROJ.4, Tim Keitt's **GDAL** package, Nicholas Lewin Koh's contribution of a shapelib interface to **maptools**, and so on. 
+
+The **rgdal** package integrated **GDAL** and work by Barry Rowlingson on interfacing the OGR library (**Rmap**) and PROJ.4 (**spproj**); both of these were merged with **rgdal**. It seemed natural to use PROJ.4 like everyone else we were aware of at that time. Recall that GPS precision restrictions for civilian use were only removed May 1, 2000, so CRS could really only try to record what the publishers of paper maps declared. Hand surveying was costly and time-consuming, digitizing positional data likewise.
+
+So **sp** used PROJ.4 strings, and from 2006, used PROJ.4 to check whether the string given by the user was valid:
+
+```{r echo=FALSE}
+knitr::include_graphics('Screenshot_20230110-144712.png')
+```
+
+When reading raster or vector data objects, the CRS was read from the data source. Often ESRI Shapefiles omitted `*.prj` files, and this was represented as a missing CRS, a character `NA` in place of a valid PROJ.4 string. 
+
+We've established that we should have preferred WKT over PROJ strings at least a decade ago: https://lists.osgeo.org/pipermail/gdal-dev/2012-November/034558.html (read the last paragraph), and possibly even earlier.
 
 
 ### The **sf** and **stars** packages
