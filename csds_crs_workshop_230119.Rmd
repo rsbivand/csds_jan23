@@ -753,6 +753,15 @@ o <- system(paste("R -q --vanilla -f", tf), intern=TRUE)
 cat(o[-1], sep="\n")
 ```
 
+## Non-PR$\phi$J projections
+
+Some presentation projections are not available through the standard GDAL/PROJ ecosystem, but can be found in javascript libraries:
+
+https://riatelab.github.io/bertin/
+https://observablehq.com/@neocartocnrs/hello-bertin-js
+https://observablehq.com/collection/@neocartocnrs/bertin
+https://observablehq.com/@neocartocnrs/bertin-js-projections?collection=@neocartocnrs/bertin
+https://observablehq.com/collection/@d3/d3-geo-projection
 
 
 # CRS in Python modules

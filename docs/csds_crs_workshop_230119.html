@@ -415,7 +415,7 @@ Sys.setenv(&quot;_SP_EVOLUTION_STATUS_&quot;=0)</code></pre>
 ##     ID[&quot;OGC&quot;,&quot;CRS84&quot;]]</code></pre>
 <p>This information is collated from SQL queries executed on the <code>proj.db</code> SQLite database installed with PR<span class="math inline">\(\phi\)</span>J (since version 6) and found on the searchpath, the first element of which is user-writable (since version 7):</p>
 <pre class="bash"><code>projinfo --searchpaths</code></pre>
-<pre><code>## /tmp/RtmptqO7US/fileed03129e59505
+<pre><code>## /tmp/RtmpmaqPtW/fileed4d44f05ae1
 ## /usr/local/share/proj
 ## /usr/local/share/proj</code></pre>
 <p>This database may be examined using standard tools:</p>
@@ -1231,6 +1231,11 @@ cat(o[-1], sep=&quot;\n&quot;)</code></pre>
 ## [1,]    1    1 -87.63218 41.87803    0
 ## &gt;</code></pre>
 </div>
+<div id="non-prphij-projections" class="section level2">
+<h2>Non-PR<span class="math inline">\(\phi\)</span>J projections</h2>
+<p>Some presentation projections are not available through the standard GDAL/PROJ ecosystem, but can be found in javascript libraries:</p>
+<p><a href="https://riatelab.github.io/bertin/" class="uri">https://riatelab.github.io/bertin/</a> <a href="https://observablehq.com/@neocartocnrs/hello-bertin-js" class="uri">https://observablehq.com/@neocartocnrs/hello-bertin-js</a> <a href="https://observablehq.com/collection/@neocartocnrs/bertin" class="uri">https://observablehq.com/collection/@neocartocnrs/bertin</a> <a href="https://observablehq.com/@neocartocnrs/bertin-js-projections?collection=@neocartocnrs/bertin" class="uri">https://observablehq.com/@neocartocnrs/bertin-js-projections?collection=@neocartocnrs/bertin</a> <a href="https://observablehq.com/collection/@d3/d3-geo-projection" class="uri">https://observablehq.com/collection/@d3/d3-geo-projection</a></p>
+</div>
 </div>
 <div id="crs-in-python-modules" class="section level1">
 <h1>CRS in Python modules</h1>
@@ -1246,7 +1251,7 @@ pyproj.show_versions()</code></pre>
 ##     pyproj: 3.4.0
 ##       PROJ: 9.1.0
 ##   data dir: /home/rsb/.local/lib/python3.11/site-packages/pyproj/proj_dir/share/proj
-## user_data_dir: /tmp/RtmptqO7US/fileed0316e980e84
+## user_data_dir: /tmp/RtmpmaqPtW/fileed4d47036c693
 ## PROJ DATA (recommended version): 1.11
 ## PROJ Database: 1.2
 ## EPSG Database: v10.074 [2022-08-01]
