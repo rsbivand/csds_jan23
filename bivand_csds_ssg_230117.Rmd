@@ -62,6 +62,16 @@ saveRDS(z, file="all_z_221222.rds")
 
 ## Summary
 
+- Packages **rgdal**, **rgeos** and **maptools** will retire (be archived on CRAN) during 2023, planned during October 2023
+
+- One reason is to reduce exposure to maintenance failure (the maintainer is not getting younger); another that available developer effort is best devoted to available, more modern packages such as **sf**, **terra**, **stars** and others
+
+- Work is under way to replace some of the use of **rgdal** and **rgeos** in **sp** by calls to **sf**, so **sp** workflows should continue to function after adaptation
+
+- The maintainer of **raster**, Rober Hijmans, has already replaced calls to **rgdal** and **rgeos** in **raster** to calls to **terra**
+
+## Background
+
 - The R.\*spatial package ecosystem is evolving: what are the main drivers? R.\*spatial includes [R-spatial](https://r-spatial.org) and [Rspatial](https://rspatial.org), and their Github organisations [R-spatial](https://github.com/r-spatial) and [Rspatial](https://github.com/rspatial)
 
 - One driver has been the widespread adoption of the **Rcpp** package for interfacing C++ libraries in R packages [@eddelbuettel2013seamless]
@@ -300,7 +310,7 @@ knitr::include_graphics("fig2_p7.png")
 
 ## The `evolution` project
 
-- The plan is to retire **maptools**, **rgdal** and **rgeos** during 2023
+- The plan is to retire **maptools**, **rgdal** and **rgeos** during 2023 while changing **sp** to use **sf** under the hood, so that the package remains active; this has already been doone for **raster** with use of retiring packages now replaced by calls to **terra**
 
 - Retirement means that maintenance will halt, and that as a consequence the packages will be archived on CRAN 
 
@@ -484,9 +494,9 @@ tipsae
 
 - Using templated texts, github issues were raised for the 167 packages listing a github repository, and individual emails sent to the remainder
 
-- Within three weeks and over the holiday period, activity was observed for 32\% of the packages (31\% of those using retiring packages in code)
+- Within four weeks and over the holiday period, activity was observed for 33\% of the packages (32\% of those using retiring packages in code)
 
-- 42\% of the github issues showed activity, but only 11\% of the emails elicited any response
+- 43\% of the github issues showed activity, but only 12\% of the emails elicited any response (only one bounced, but false positive spam detection is not unlikely)
 
 # Next steps
 
