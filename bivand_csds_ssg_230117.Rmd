@@ -310,7 +310,7 @@ knitr::include_graphics("fig2_p7.png")
 
 ## The `evolution` project
 
-- The plan is to retire **maptools**, **rgdal** and **rgeos** during 2023 while changing **sp** to use **sf** under the hood, so that the package remains active; this has already been doone for **raster** with use of retiring packages now replaced by calls to **terra**
+- The plan is to retire **maptools**, **rgdal** and **rgeos** during 2023 while changing **sp** to use **sf** under the hood, so that the package remains active; this has already been done for **raster** with use of retiring packages now replaced by calls to **terra**
 
 - Retirement means that maintenance will halt, and that as a consequence the packages will be archived on CRAN 
 

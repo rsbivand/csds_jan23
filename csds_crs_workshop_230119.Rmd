@@ -217,11 +217,13 @@ Defining the CRS became necessary when integrating other data with a different C
 
 The EPSG database https://epsg.org/home.html is updated regularly and contains not only CRS definitions, but also authoritative tables specifying transformation pathways between CRS. A major change occurred with version 10 of the data model, introducing datum ensembles, and beginning to identify dynamic datums.
 
-```{r set-options-cdn, echo=FALSE, results='hide'}
+To stabilise this presentation, we'll set some environment variables:
+
+```{r set-options-cdn}
 td <- tempfile()
 dir.create(td)
 Sys.setenv("PROJ_USER_WRITABLE_DIRECTORY"=td)
-#Sys.setenv("PROJ_NETWORK"="ON")
+Sys.setenv("PROJ_NETWORK"="ON")
 Sys.setenv("_SP_EVOLUTION_STATUS_"=0)
 ```
 
@@ -270,12 +272,12 @@ dbDisconnect(db)
 
 The remainder done by PR$\phi$J is to marshall the details of the CRS retrieved from the database in the requested output format, typically now WKT2:2019.
 
-Sometimes the GDAL rendering may differ from that returned directly by PR$\phi$J (see also https://github.com/OSGeo/gdal/issues/2035) from the same `proj.db` database:
+Sometimes the GDAL rendering may differ from that returned directly by PR$\phi$J (see also https://github.com/OSGeo/gdal/issues/2035) from the same `proj.db` database, as it uses `OGRSpatialReference` in GDAL on the way:
 
 ```{bash}
 gdalsrsinfo OGC:CRS84
 ```
-
+The missing components are the `USAGE` and `ID` blocks, and the explicit expression of the `WGS84` datum as an ensemble of successive definitions with an ensemble accuracy component.
 
 # Datum transformation
 
@@ -393,7 +395,7 @@ echo $PROJ_NETWORK
 The fifth digit after the decimal point is here about 1m, so simply using the different ellipsoid definitions shifts the point a couple of metres on each axis:
 
 ```{bash}
-echo 41.878056 -87.632222 | cs2cs -f %.5f --bbox -88,41,-87,42 "EPSG:4152" "ESRI:104000"
+echo 41.878056 -87.632222 | cs2cs -f %.5f --bbox -87.7,41.87,-87.6,41.9 "EPSG:4152" "ESRI:104000"
 ```
 
 However, grids were listed as missing; how can we now get the grids?
@@ -453,6 +455,7 @@ The first CDN access downloads required chunks as Tiff files; on subsequent use,
 If we download `conus.tif`, we can display the latitude and longitude transformation offset shifts that it provides:
 
 ```{r}
+Sys.unsetenv("PROJ_NETWORK")
 rnaturalearth::countries110 |> 
     sf::st_as_sf() |>
     subset(admin == "United States of America") |>
@@ -546,6 +549,13 @@ We can also coerce the `"crs"` object from **sf** to an `"CRS"` object as used b
 as(sf::st_crs("OGC:CRS84"), "CRS")
 ```
 
+A recent innovation is the introduction of a planar missing CRS in **sf** when writing features to file (especially for GPKG which silently assumes a WGS84 GEOGCRS):
+
+```{r}
+sf::st_crs("ENGCRS[\"Undefined Cartesian SRS with unknown unit\",EDATUM[\"Unknown engineering datum\"],CS[Cartesian,2],AXIS[\"X\",unspecified,ORDER[1],LENGTHUNIT[\"unknown\",0]],AXIS[\"Y\",unspecified,ORDER[2],LENGTHUNIT[\"unknown\",0]]]")
+```
+
+
 ### Working in S2 or R2
 
 When using a geographical CRS, many topological predicates and operations, as well as spatial indexing, that may readily be performed using GEOS (planar, R2) cannot be used. The **s2** package interfaces the S2 Geometry library, providing fast spatial indexing , predicates and operations on the sphere. When using **sf**, `sf_use_s2()` is by  default `TRUE`, and **s2** will be used in place of GEOS: 
@@ -589,24 +599,32 @@ sf::st_crs(stars::st_as_stars(r))
 
 ### Handling `"CRS"` objects from the **sp** package when **rgdal** has retired
 
-https://github.com/rsbivand/sp/tree/internalise_status
+When **sp** default `evolution_status` is `2L` - use **sf** instead of **rgdal** and **rgeos**, a change from `0L` planned for June 2023, `sp::CRS()` and `spTransform()` will use `sf::st_crs()` and `sf::st_transform()` internally. So `"CRS"` objects will continue to be usable in their current form which is an S4 object containing the `"projargs"` PROJ.4 string and an (invisible) comment containing the WKT2:2019 representation. However, because `sp::CRS()` with status `0L` uses **rgdal** and this uses PR$\phi$J directly, but `sp::CRS()` with status `2L` uses **sf** and this uses `OGRSpatialReference` on its way to PR$\phi$J, the rendered representations may vary slightly as we saw above.
+
+This exercise uses the version of **sp** installed from the `internalise_status` branch of my github fork: https://github.com/rsbivand/sp/tree/internalise_status. This permits the internal **sp** setting to be changed at runtime, not only when the package is loaded (also loaded by other packages). The relevant values are: `0`: business as usual, `1`: stop if **rgdal** or **rgeos** are needed and absent, `2`: use **sf** instead of **rgdal** and **rgeos**.
 
 ```{r}
 sp::get_evolution_status()
 ```
-
+We are also stepping around the use of caching by `sp::CRS()`, to ensure look-up directly: legacy **sp** uses **rgdal** for look-up, and **rgdal** uses PR$\phi$J, not `OGRSpatialReference`, for instantiating CRS objects:
 
 ```{r}
 sf::st_crs(sp::CRS("OGC:CRS84"), use_cache=FALSE)
 ```
 
+The cache is only turned off for look-up, but the instantiated value is cached once found.
+
 ```{r}
 sp::set_evolution_status(2L)
 ```
 
+If we change the status to go through **sf** and `OGRSpatialReference`, but let the cache come into play, the value cached before is found on look-up and returned:
+
 ```{r}
 sf::st_crs(sp::CRS("OGC:CRS84"))
 ```
+
+We have to turn off the cache to instantiate directly from **sf** and `OGRSpatialReference`:
 
 ```{r}
 sf::st_crs(sp::CRS("OGC:CRS84", use_cache=FALSE))
@@ -619,30 +637,255 @@ sp::set_evolution_status(0L)
 
 ### The **sp** and **raster** packages
 
+The **raster** package continues to use `sp::CRS()` internally, so will follow the status option value set there, and will use the **sp** `"CRS"` cache, so the last cached value will be the one returned:
+
 ```{r}
 r <- raster::raster()
 raster::crs(r) <- "OGC:CRS84"
 raster::crs(r)
 ```
 
+Very possibly, use of the cache should be exposed, and its default possibly changed, although in most settings runtime is reduced when the same CRS is being instantiated many times (this is very typical).
+
 ## Discovering transformation pipelines in **sf**
+
+```{r}
+Sys.unsetenv("PROJ_NETWORK")
+```
+
+```{r}
+sf::sf_proj_network()
+```
+
+```{r}
+sf::sf_proj_network(FALSE)
+```
+
+```{r}
+sf::sf_proj_network()
+```
+
+```{r}
+(pls_no_cdn <- sf::sf_proj_pipelines("EPSG:4152", "ESRI:104000", AOI=c(-87.7, 41.87, -87.6, 41.9)))
+```
+
+
+```{r}
+sf::sf_proj_network(TRUE)
+```
+
+```{r}
+(pls_cdn <- sf::sf_proj_pipelines("EPSG:4152", "ESRI:104000", AOI=c(-87.7, 41.87, -87.6, 41.9)))
+```
+
+```{r}
+sf::sf_proj_network(FALSE)
+```
+
 
 ## Transforming spatial objects in **sf** and **terra**
 
-## Using the CDN in **sf** and **terra**
+**sf** and **terra** use `OGRCreateCoordinateTransformation()` to create the transformation pipeline internally. Possibly because of this use of GDAL rather than PR$\phi$J, control over the user writable directory and the CDN `PROJ_NETWORK` status is rather challenging.
+
+
+```{r}
+(CBTB <- sf::st_sfc(sf::st_point(c(-87.632222, 41.878056)), crs="EPSG:4152"))
+```
+Unlike previously, we are using GIS/visualization axis order, and **sf** is set not to override using authority axis order:
+
+```{r}
+sf::st_axis_order()
+```
+We'll write out the CBTB point for further use:
+
+```{r}
+sf::st_write(CBTB, "CBTB.gpkg", append=FALSE)
+```
+To regain control for the purpose of demonstrating how to enable and disable the CDN with reasonable certainty, at least the `PROJ_NETWORK` environment variable needs to be set *before* **sf** is loaded (or analogously **terra** is loaded). Here we'll start minimal R sessions, setting the environment variable before anything else. 
+
+```{r}
+lines <- c(
+    "Sys.setenv(\"PROJ_NETWORK\"=\"ON\")",
+    "CBTB <- sf::st_read(\"CBTB.gpkg\", quiet=TRUE)",
+    "sf::st_transform(CBTB, \"ESRI:104000\", aoi=c(-87.7, 41.87, -87.6, 41.9))"
+    )
+tf <- tempfile(fileext=".R")
+writeLines(lines, con=tf)
+o <- system(paste("R -q --vanilla -f", tf), intern=TRUE)
+cat(o[-1], sep="\n")
+```
+This corresponds to the result above using horisontal grid shift.
+
+```{r}
+lines <- c(
+    "Sys.unsetenv(\"PROJ_NETWORK\")",
+    "CBTB <- sf::st_read(\"CBTB.gpkg\", quiet=TRUE)",
+    "sf::st_transform(CBTB, \"ESRI:104000\", aoi=c(-87.7, 41.87, -87.6, 41.9))"
+    )
+tf <- tempfile(fileext=".R")
+writeLines(lines, con=tf)
+o <- system(paste("R -q --vanilla -f", tf), intern=TRUE)
+cat(o[-1], sep="\n")
+```
+This is the ballpark accuracy result with the difference in the ellipsoid definitions taken into account, but no use made of the datum specification. The results for **terra** are the same:
+
+```{r}
+lines <- c(
+    "Sys.setenv(\"PROJ_NETWORK\"=\"ON\")",
+    "CBTB <- terra::vect(\"CBTB.gpkg\")",
+    "terra::geom(terra::project(CBTB, \"ESRI:104000\"))"
+    )
+tf <- tempfile(fileext=".R")
+writeLines(lines, con=tf)
+o <- system(paste("R -q --vanilla -f", tf), intern=TRUE)
+cat(o[-1], sep="\n")
+```
+
+```{r}
+lines <- c(
+    "Sys.unsetenv(\"PROJ_NETWORK\")",
+    "CBTB <- terra::vect(\"CBTB.gpkg\")",
+    "terra::geom(terra::project(CBTB, \"ESRI:104000\"))"
+    )
+tf <- tempfile(fileext=".R")
+writeLines(lines, con=tf)
+o <- system(paste("R -q --vanilla -f", tf), intern=TRUE)
+cat(o[-1], sep="\n")
+```
+
 
 
 # CRS in Python modules
 
 ## Representing CRS in Python modules
 
+```{r set-options-cdn1}
+td_py <- tempfile()
+dir.create(td_py)
+Sys.setenv("PROJ_USER_WRITABLE_DIRECTORY"=td_py)
+```
+
+The whole Python environment has shifted to Python 3, causing some churn among packages. For geospatial data, the **geopandas** package  [@geopandas-package] uses a similar approach to the R **sf** package, representing data as a data frame with a geometry column. Unlike **sf**, **geopandas** does not itself link to PROJ, GDAL or GEOS, relying on the **pyproj** package for PR$\phi$J [@pyproj-package], linking to PR$\phi$J. 
+
+
+```{python}
+import pyproj
+pyproj.show_versions()
+```
+
+Here **pyproj** was installed using `pip`, so bundles its own copy of the metadata files:
+
+```{bash}
+ls /home/rsb/.local/lib/python3.11/site-packages/pyproj/proj_dir/share/proj
+```
+A `"CRS"` object can be instantiated, typically using the same strings as with PR$\phi$J itself:
+
+```{python}
+crs = pyproj.crs.CRS('OGC:CRS84')
+crs
+```
+The object has a type, and this is the one used in objects in **geopandas**
+
+```{python}
+type(crs)
+```
+The object can be pretty-printed:
+
+```{python}
+print(crs.to_wkt(pretty=True))
+```
+The NAD83 (HARN) representation summary is:
+
+```{python}
+pyproj.crs.CRS('EPSG:4152')
+```
+
+and the deprecated NAD27 version:
+
+```{python}
+pyproj.crs.CRS('ESRI:104000')
+```
+
 ### Working in S2 or R2
+
+**shapely** interfaces GEOS, **spherely** interfaces S2Geometry, WIP. https://github.com/geopandas/community/issues/10
+
 
 ## Discovering transformation pipelines in **pyproj**
 
+**pyproj** is directly based on PR$\phi$J, so is based on findable transformation pipelines:
+
+```{python}
+from pyproj.transformer import TransformerGroup
+```
+
+First turning off the CDN, we again find that only the ballpark accuracy is supported:
+
+```{python}
+pyproj.network.set_network_enabled(False)
+tg = TransformerGroup('EPSG:4152', 'ESRI:104000', always_xy=True, area_of_interest=pyproj.aoi.AreaOfInterest(-87.7, 41.87, -87.6, 41.9))
+tg
+```
+```{python}
+import re
+print(re.sub("step", "\nstep", tg.transformers[0].definition))
+```
+With CDN access provided, the three pipelines are available:
+
+```{python}
+pyproj.network.set_network_enabled(True)
+tg = TransformerGroup('EPSG:4152', 'ESRI:104000', always_xy=True, area_of_interest=pyproj.aoi.AreaOfInterest(-87.7, 41.87, -87.6, 41.9))
+tg
+```
+```{python}
+print(re.sub("step", "\nstep", tg.transformers[0].definition))
+```
+
 ## Transforming spatial objects in **pyproj**
 
-## Using the CDN in **pyproj**
+We'll start by just using point coordinates:
+
+```{python}
+cx = -87.632222
+cy = 41.878056
+import numpy
+numpy.set_printoptions(precision=5, suppress=True)
+```
+
+A curiosity is that the ballpark accuracy pipeline appears to skip the ellipsoid correction:
+
+```{python}
+ll2 = tg.transformers[2].transform(cx, cy)
+print(numpy.array(ll2))
+```
+but with the 0.2m accuracy grid, the result is as expected:
+
+```{python}
+ll0 = tg.transformers[0].transform(cx, cy)
+print(numpy.array(ll0))
+```
+Again, a short script, as my console `python` finds working modules but via RStudio `pandas` fails to load:
+
+```{r}
+lines <- c(
+    "import pyproj",
+    "import geopandas",
+    "CBTB = geopandas.read_file('CBTB.gpkg')",
+    "print(CBTB)",
+    "print(CBTB.crs.to_wkt(pretty=True))",
+    "pyproj.network.set_network_enabled(False)",
+    "NAD27_CBTB0 = CBTB.to_crs('ESRI:104000')",
+    "print(NAD27_CBTB0)",
+    "pyproj.network.set_network_enabled(True)",
+    "NAD27_CBTB1 = CBTB.to_crs('ESRI:104000')",
+    "print(NAD27_CBTB1)",
+    "quit()"
+)
+writeLines(lines, con="scr.py")
+Sys.setenv("GEOPANDAS_SCRIPT"="scr.py")
+o <- system("python -q -u $GEOPANDAS_SCRIPT", intern=TRUE)
+cat(o, sep="\n")
+```
 
 
 

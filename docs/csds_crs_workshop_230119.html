@@ -370,6 +370,12 @@ GridsDatums[grep(&quot;United States&quot;, GridsDatums$country),]</code></pre>
 <p>While most national mapping agencies defined their own standard geographical and projected CRS, supranational bodies, such as military alliances and colonial administrations often imposed some regularity to facilitate operations across national boundaries. This also led to the creation of the European Petroleum Survey Group (EPSG), because maritime jurisdiction was not orderly, and mattered when countries sharing the same coastal shelf tried to assign conflicting exploration concessions. Experts from oil companies accumulated vast experience, which fed through to the International Standards Organization (ISO, especially TC 211) and the Open Geospatial Consortium (OGC).</p>
 <p>Defining the CRS became necessary when integrating other data with a different CRS, and for displaying on a web map background. Many legacy file formats, such as the ESRI Shapefile format, did not mandate the inclusion of the CRS of positional data. Most open source software then used PROJ.4 strings as a flexible representation, but as internationally accepted standards have been reached, in particular ISO 19111 <span class="citation"><a href="#ref-iso19111" role="doc-biblioref">ISO</a> (<a href="#ref-iso19111" role="doc-biblioref">2019</a>)</span>, and improved over time by iteration, it is really necessary to change to a modern text representation, known as WKT2 (2019).</p>
 <p>The EPSG database <a href="https://epsg.org/home.html" class="uri">https://epsg.org/home.html</a> is updated regularly and contains not only CRS definitions, but also authoritative tables specifying transformation pathways between CRS. A major change occurred with version 10 of the data model, introducing datum ensembles, and beginning to identify dynamic datums.</p>
+<p>To stabilise this presentation, we’ll set some environment variables:</p>
+<pre class="r"><code>td &lt;- tempfile()
+dir.create(td)
+Sys.setenv(&quot;PROJ_USER_WRITABLE_DIRECTORY&quot;=td)
+Sys.setenv(&quot;PROJ_NETWORK&quot;=&quot;ON&quot;)
+Sys.setenv(&quot;_SP_EVOLUTION_STATUS_&quot;=0)</code></pre>
 </div>
 <div id="how-are-coordinate-reference-systems-represented" class="section level2">
 <h2>How are coordinate reference systems represented?</h2>
@@ -409,7 +415,7 @@ GridsDatums[grep(&quot;United States&quot;, GridsDatums$country),]</code></pre>
 ##     ID[&quot;OGC&quot;,&quot;CRS84&quot;]]</code></pre>
 <p>This information is collated from SQL queries executed on the <code>proj.db</code> SQLite database installed with PR<span class="math inline">\(\phi\)</span>J (since version 6) and found on the searchpath, the first element of which is user-writable (since version 7):</p>
 <pre class="bash"><code>projinfo --searchpaths</code></pre>
-<pre><code>## /tmp/RtmpoJD4Fy/filee4331ca1366d
+<pre><code>## /tmp/RtmptqO7US/fileed03129e59505
 ## /usr/local/share/proj
 ## /usr/local/share/proj</code></pre>
 <p>This database may be examined using standard tools:</p>
@@ -486,7 +492,7 @@ dbListTables(db)</code></pre>
 ## 1   &lt;NA&gt;          0</code></pre>
 <pre class="r"><code>dbDisconnect(db)</code></pre>
 <p>The remainder done by PR<span class="math inline">\(\phi\)</span>J is to marshall the details of the CRS retrieved from the database in the requested output format, typically now WKT2:2019.</p>
-<p>Sometimes the GDAL rendering may differ from that returned directly by PR<span class="math inline">\(\phi\)</span>J (see also <a href="https://github.com/OSGeo/gdal/issues/2035" class="uri">https://github.com/OSGeo/gdal/issues/2035</a>) from the same <code>proj.db</code> database:</p>
+<p>Sometimes the GDAL rendering may differ from that returned directly by PR<span class="math inline">\(\phi\)</span>J (see also <a href="https://github.com/OSGeo/gdal/issues/2035" class="uri">https://github.com/OSGeo/gdal/issues/2035</a>) from the same <code>proj.db</code> database, as it uses <code>OGRSpatialReference</code> in GDAL on the way:</p>
 <pre class="bash"><code>gdalsrsinfo OGC:CRS84</code></pre>
 <pre><code>## 
 ## PROJ.4 : +proj=longlat +datum=WGS84 +no_defs
@@ -509,6 +515,7 @@ dbListTables(db)</code></pre>
 ##             ORDER[2],
 ##             ANGLEUNIT[&quot;degree&quot;,0.0174532925199433,
 ##                 ID[&quot;EPSG&quot;,9122]]]]</code></pre>
+<p>The missing components are the <code>USAGE</code> and <code>ID</code> blocks, and the explicit expression of the <code>WGS84</code> datum as an ensemble of successive definitions with an ensemble accuracy component.</p>
 </div>
 </div>
 <div id="datum-transformation" class="section level1">
@@ -660,7 +667,7 @@ dbListTables(db)</code></pre>
 <pre><code>## [1] &quot;&quot;</code></pre>
 <pre class="bash"><code>echo $PROJ_NETWORK</code></pre>
 <p>The fifth digit after the decimal point is here about 1m, so simply using the different ellipsoid definitions shifts the point a couple of metres on each axis:</p>
-<pre class="bash"><code>echo 41.878056 -87.632222 | cs2cs -f %.5f --bbox -88,41,-87,42 &quot;EPSG:4152&quot; &quot;ESRI:104000&quot;</code></pre>
+<pre class="bash"><code>echo 41.878056 -87.632222 | cs2cs -f %.5f --bbox -87.7,41.87,-87.6,41.9 &quot;EPSG:4152&quot; &quot;ESRI:104000&quot;</code></pre>
 <pre><code>## 41.87803 -87.63218 0.00000</code></pre>
 <p>However, grids were listed as missing; how can we now get the grids?</p>
 </div>
@@ -695,7 +702,8 @@ dbListTables(db)</code></pre>
 <pre class="r"><code>dbDisconnect(db)</code></pre>
 <p>The first CDN access downloads required chunks as Tiff files; on subsequent use, the chunks may be checked for staleness.</p>
 <p>If we download <code>conus.tif</code>, we can display the latitude and longitude transformation offset shifts that it provides:</p>
-<pre class="r"><code>rnaturalearth::countries110 |&gt; 
+<pre class="r"><code>Sys.unsetenv(&quot;PROJ_NETWORK&quot;)
+rnaturalearth::countries110 |&gt; 
     sf::st_as_sf() |&gt;
     subset(admin == &quot;United States of America&quot;) |&gt;
     sf::st_geometry() -&gt; us
@@ -833,6 +841,20 @@ print(sqrt((a^2-b^2)/a^2), digits=10)</code></pre>
 ##             ORDER[2],
 ##             ANGLEUNIT[&quot;degree&quot;,0.0174532925199433,
 ##                 ID[&quot;EPSG&quot;,9122]]]]</code></pre>
+<p>A recent innovation is the introduction of a planar missing CRS in <strong>sf</strong> when writing features to file (especially for GPKG which silently assumes a WGS84 GEOGCRS):</p>
+<pre class="r"><code>sf::st_crs(&quot;ENGCRS[\&quot;Undefined Cartesian SRS with unknown unit\&quot;,EDATUM[\&quot;Unknown engineering datum\&quot;],CS[Cartesian,2],AXIS[\&quot;X\&quot;,unspecified,ORDER[1],LENGTHUNIT[\&quot;unknown\&quot;,0]],AXIS[\&quot;Y\&quot;,unspecified,ORDER[2],LENGTHUNIT[\&quot;unknown\&quot;,0]]]&quot;)</code></pre>
+<pre><code>## Coordinate Reference System:
+##   User input: ENGCRS[&quot;Undefined Cartesian SRS with unknown unit&quot;,EDATUM[&quot;Unknown engineering datum&quot;],CS[Cartesian,2],AXIS[&quot;X&quot;,unspecified,ORDER[1],LENGTHUNIT[&quot;unknown&quot;,0]],AXIS[&quot;Y&quot;,unspecified,ORDER[2],LENGTHUNIT[&quot;unknown&quot;,0]]] 
+##   wkt:
+## ENGCRS[&quot;Undefined Cartesian SRS with unknown unit&quot;,
+##     EDATUM[&quot;Unknown engineering datum&quot;],
+##     CS[Cartesian,2],
+##         AXIS[&quot;x&quot;,unspecified,
+##             ORDER[1],
+##             LENGTHUNIT[&quot;unknown&quot;,0]],
+##         AXIS[&quot;y&quot;,unspecified,
+##             ORDER[2],
+##             LENGTHUNIT[&quot;unknown&quot;,0]]]</code></pre>
 </div>
 <div id="working-in-s2-or-r2" class="section level3">
 <h3>Working in S2 or R2</h3>
@@ -933,9 +955,11 @@ cat(terra::crs(r), &quot;\n&quot;)</code></pre>
 </div>
 <div id="handling-crs-objects-from-the-sp-package-when-rgdal-has-retired" class="section level3">
 <h3>Handling <code>&quot;CRS&quot;</code> objects from the <strong>sp</strong> package when <strong>rgdal</strong> has retired</h3>
-<p><a href="https://github.com/rsbivand/sp/tree/internalise_status" class="uri">https://github.com/rsbivand/sp/tree/internalise_status</a></p>
+<p>When <strong>sp</strong> default <code>evolution_status</code> is <code>2L</code> - use <strong>sf</strong> instead of <strong>rgdal</strong> and <strong>rgeos</strong>, a change from <code>0L</code> planned for June 2023, <code>sp::CRS()</code> and <code>spTransform()</code> will use <code>sf::st_crs()</code> and <code>sf::st_transform()</code> internally. So <code>&quot;CRS&quot;</code> objects will continue to be usable in their current form which is an S4 object containing the <code>&quot;projargs&quot;</code> PROJ.4 string and an (invisible) comment containing the WKT2:2019 representation. However, because <code>sp::CRS()</code> with status <code>0L</code> uses <strong>rgdal</strong> and this uses PR<span class="math inline">\(\phi\)</span>J directly, but <code>sp::CRS()</code> with status <code>2L</code> uses <strong>sf</strong> and this uses <code>OGRSpatialReference</code> on its way to PR<span class="math inline">\(\phi\)</span>J, the rendered representations may vary slightly as we saw above.</p>
+<p>This exercise uses the version of <strong>sp</strong> installed from the <code>internalise_status</code> branch of my github fork: <a href="https://github.com/rsbivand/sp/tree/internalise_status" class="uri">https://github.com/rsbivand/sp/tree/internalise_status</a>. This permits the internal <strong>sp</strong> setting to be changed at runtime, not only when the package is loaded (also loaded by other packages). The relevant values are: <code>0</code>: business as usual, <code>1</code>: stop if <strong>rgdal</strong> or <strong>rgeos</strong> are needed and absent, <code>2</code>: use <strong>sf</strong> instead of <strong>rgdal</strong> and <strong>rgeos</strong>.</p>
 <pre class="r"><code>sp::get_evolution_status()</code></pre>
 <pre><code>## [1] 0</code></pre>
+<p>We are also stepping around the use of caching by <code>sp::CRS()</code>, to ensure look-up directly: legacy <strong>sp</strong> uses <strong>rgdal</strong> for look-up, and <strong>rgdal</strong> uses PR<span class="math inline">\(\phi\)</span>J, not <code>OGRSpatialReference</code>, for instantiating CRS objects:</p>
 <pre class="r"><code>sf::st_crs(sp::CRS(&quot;OGC:CRS84&quot;), use_cache=FALSE)</code></pre>
 <pre><code>## Coordinate Reference System:
 ##   User input: WGS 84 (CRS84) 
@@ -966,8 +990,10 @@ cat(terra::crs(r), &quot;\n&quot;)</code></pre>
 ##         AREA[&quot;World.&quot;],
 ##         BBOX[-90,-180,90,180]],
 ##     ID[&quot;OGC&quot;,&quot;CRS84&quot;]]</code></pre>
+<p>The cache is only turned off for look-up, but the instantiated value is cached once found.</p>
 <pre class="r"><code>sp::set_evolution_status(2L)</code></pre>
 <pre><code>## [1] 2</code></pre>
+<p>If we change the status to go through <strong>sf</strong> and <code>OGRSpatialReference</code>, but let the cache come into play, the value cached before is found on look-up and returned:</p>
 <pre class="r"><code>sf::st_crs(sp::CRS(&quot;OGC:CRS84&quot;))</code></pre>
 <pre><code>## Coordinate Reference System:
 ##   User input: WGS 84 (CRS84) 
@@ -998,6 +1024,7 @@ cat(terra::crs(r), &quot;\n&quot;)</code></pre>
 ##         AREA[&quot;World.&quot;],
 ##         BBOX[-90,-180,90,180]],
 ##     ID[&quot;OGC&quot;,&quot;CRS84&quot;]]</code></pre>
+<p>We have to turn off the cache to instantiate directly from <strong>sf</strong> and <code>OGRSpatialReference</code>:</p>
 <pre class="r"><code>sf::st_crs(sp::CRS(&quot;OGC:CRS84&quot;, use_cache=FALSE))</code></pre>
 <pre><code>## Coordinate Reference System:
 ##   User input: WGS 84 
@@ -1024,6 +1051,7 @@ cat(terra::crs(r), &quot;\n&quot;)</code></pre>
 </div>
 <div id="the-sp-and-raster-packages" class="section level3">
 <h3>The <strong>sp</strong> and <strong>raster</strong> packages</h3>
+<p>The <strong>raster</strong> package continues to use <code>sp::CRS()</code> internally, so will follow the status option value set there, and will use the <strong>sp</strong> <code>&quot;CRS&quot;</code> cache, so the last cached value will be the one returned:</p>
 <pre class="r"><code>r &lt;- raster::raster()
 raster::crs(r) &lt;- &quot;OGC:CRS84&quot;
 raster::crs(r)</code></pre>
@@ -1056,39 +1084,374 @@ raster::crs(r)</code></pre>
 ##         AREA[&quot;World.&quot;],
 ##         BBOX[-90,-180,90,180]],
 ##     ID[&quot;OGC&quot;,&quot;CRS84&quot;]]</code></pre>
+<p>Very possibly, use of the cache should be exposed, and its default possibly changed, although in most settings runtime is reduced when the same CRS is being instantiated many times (this is very typical).</p>
 </div>
 </div>
 <div id="discovering-transformation-pipelines-in-sf" class="section level2">
 <h2>Discovering transformation pipelines in <strong>sf</strong></h2>
+<pre class="r"><code>Sys.unsetenv(&quot;PROJ_NETWORK&quot;)</code></pre>
+<pre class="r"><code>sf::sf_proj_network()</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>sf::sf_proj_network(FALSE)</code></pre>
+<pre><code>## character(0)</code></pre>
+<pre class="r"><code>sf::sf_proj_network()</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>(pls_no_cdn &lt;- sf::sf_proj_pipelines(&quot;EPSG:4152&quot;, &quot;ESRI:104000&quot;, AOI=c(-87.7, 41.87, -87.6, 41.9)))</code></pre>
+<pre><code>## Candidate coordinate operations found:  3 
+## Strict containment:     FALSE 
+## Axis order auth compl:  FALSE 
+## Source:  EPSG:4152 
+## Target:  ESRI:104000 
+## Best instantiable operation has only ballpark accuracy 
+## Description: axis order change (2D) + Ballpark geographic offset from
+##              NAD83(HARN) to GCS_Assumed_Geographic_1 + axis
+##              order change (2D)
+## Definition:  +proj=noop +ellps=GRS80 
+## Operation 1 is lacking 2 grids with accuracy 0.2 m
+## Missing grid: us_noaa_conus.tif 
+## Name: us_noaa_conus.tif 
+## URL: https://cdn.proj.org/us_noaa_conus.tif 
+## Missing grid: us_noaa_ilhpgn.tif 
+## URL: https://cdn.proj.org/us_noaa_ilhpgn.tif 
+## Operation 2 is lacking 2 grids with accuracy 0.2 m
+## Missing grid: us_noaa_conus.tif 
+## Name: us_noaa_conus.tif 
+## URL: https://cdn.proj.org/us_noaa_conus.tif 
+## Missing grid: us_noaa_mihpgn.tif 
+## URL: https://cdn.proj.org/us_noaa_mihpgn.tif</code></pre>
+<pre class="r"><code>sf::sf_proj_network(TRUE)</code></pre>
+<pre><code>## [1] &quot;https://cdn.proj.org&quot;</code></pre>
+<pre class="r"><code>(pls_cdn &lt;- sf::sf_proj_pipelines(&quot;EPSG:4152&quot;, &quot;ESRI:104000&quot;, AOI=c(-87.7, 41.87, -87.6, 41.9)))</code></pre>
+<pre><code>## Candidate coordinate operations found:  3 
+## Strict containment:     FALSE 
+## Axis order auth compl:  FALSE 
+## Source:  EPSG:4152 
+## Target:  ESRI:104000 
+## Best instantiable operation has accuracy: 0.2 m
+## Description: axis order change (2D) + Inverse of NAD83 to NAD83(HARN) (38) +
+##              Inverse of NAD27 to NAD83 (1) + axis order change
+##              (2D)
+## Definition:  +proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad
+##              +step +inv +proj=hgridshift
+##              +grids=us_noaa_ilhpgn.tif +step +inv
+##              +proj=hgridshift +grids=us_noaa_conus.tif +step
+##              +proj=unitconvert +xy_in=rad +xy_out=deg</code></pre>
+<pre class="r"><code>sf::sf_proj_network(FALSE)</code></pre>
+<pre><code>## character(0)</code></pre>
 </div>
 <div id="transforming-spatial-objects-in-sf-and-terra" class="section level2">
 <h2>Transforming spatial objects in <strong>sf</strong> and <strong>terra</strong></h2>
-</div>
-<div id="using-the-cdn-in-sf-and-terra" class="section level2">
-<h2>Using the CDN in <strong>sf</strong> and <strong>terra</strong></h2>
+<p><strong>sf</strong> and <strong>terra</strong> use <code>OGRCreateCoordinateTransformation()</code> to create the transformation pipeline internally. Possibly because of this use of GDAL rather than PR<span class="math inline">\(\phi\)</span>J, control over the user writable directory and the CDN <code>PROJ_NETWORK</code> status is rather challenging.</p>
+<pre class="r"><code>(CBTB &lt;- sf::st_sfc(sf::st_point(c(-87.632222, 41.878056)), crs=&quot;EPSG:4152&quot;))</code></pre>
+<pre><code>## Geometry set for 1 feature 
+## Geometry type: POINT
+## Dimension:     XY
+## Bounding box:  xmin: -87.63222 ymin: 41.87806 xmax: -87.63222 ymax: 41.87806
+## Geodetic CRS:  NAD83(HARN)</code></pre>
+<pre><code>## POINT (-87.63222 41.87806)</code></pre>
+<p>Unlike previously, we are using GIS/visualization axis order, and <strong>sf</strong> is set not to override using authority axis order:</p>
+<pre class="r"><code>sf::st_axis_order()</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>We’ll write out the CBTB point for further use:</p>
+<pre class="r"><code>sf::st_write(CBTB, &quot;CBTB.gpkg&quot;, append=FALSE)</code></pre>
+<pre><code>## Deleting layer `CBTB&#39; using driver `GPKG&#39;
+## Writing layer `CBTB&#39; to data source `CBTB.gpkg&#39; using driver `GPKG&#39;
+## Writing 1 features with 0 fields and geometry type Point.</code></pre>
+<p>To regain control for the purpose of demonstrating how to enable and disable the CDN with reasonable certainty, at least the <code>PROJ_NETWORK</code> environment variable needs to be set <em>before</em> <strong>sf</strong> is loaded (or analogously <strong>terra</strong> is loaded). Here we’ll start minimal R sessions, setting the environment variable before anything else.</p>
+<pre class="r"><code>lines &lt;- c(
+    &quot;Sys.setenv(\&quot;PROJ_NETWORK\&quot;=\&quot;ON\&quot;)&quot;,
+    &quot;CBTB &lt;- sf::st_read(\&quot;CBTB.gpkg\&quot;, quiet=TRUE)&quot;,
+    &quot;sf::st_transform(CBTB, \&quot;ESRI:104000\&quot;, aoi=c(-87.7, 41.87, -87.6, 41.9))&quot;
+    )
+tf &lt;- tempfile(fileext=&quot;.R&quot;)
+writeLines(lines, con=tf)
+o &lt;- system(paste(&quot;R -q --vanilla -f&quot;, tf), intern=TRUE)
+cat(o[-1], sep=&quot;\n&quot;)</code></pre>
+<pre><code>## &gt; Sys.setenv(&quot;PROJ_NETWORK&quot;=&quot;ON&quot;)
+## &gt; CBTB &lt;- sf::st_read(&quot;CBTB.gpkg&quot;, quiet=TRUE)
+## &gt; sf::st_transform(CBTB, &quot;ESRI:104000&quot;, aoi=c(-87.7, 41.87, -87.6, 41.9))
+## Simple feature collection with 1 feature and 0 fields
+## Geometry type: POINT
+## Dimension:     XY
+## Bounding box:  xmin: -87.63217 ymin: 41.87802 xmax: -87.63217 ymax: 41.87802
+## Geodetic CRS:  GCS_Assumed_Geographic_1
+##                         geom
+## 1 POINT (-87.63217 41.87802)
+## &gt;</code></pre>
+<p>This corresponds to the result above using horisontal grid shift.</p>
+<pre class="r"><code>lines &lt;- c(
+    &quot;Sys.unsetenv(\&quot;PROJ_NETWORK\&quot;)&quot;,
+    &quot;CBTB &lt;- sf::st_read(\&quot;CBTB.gpkg\&quot;, quiet=TRUE)&quot;,
+    &quot;sf::st_transform(CBTB, \&quot;ESRI:104000\&quot;, aoi=c(-87.7, 41.87, -87.6, 41.9))&quot;
+    )
+tf &lt;- tempfile(fileext=&quot;.R&quot;)
+writeLines(lines, con=tf)
+o &lt;- system(paste(&quot;R -q --vanilla -f&quot;, tf), intern=TRUE)
+cat(o[-1], sep=&quot;\n&quot;)</code></pre>
+<pre><code>## &gt; Sys.unsetenv(&quot;PROJ_NETWORK&quot;)
+## &gt; CBTB &lt;- sf::st_read(&quot;CBTB.gpkg&quot;, quiet=TRUE)
+## &gt; sf::st_transform(CBTB, &quot;ESRI:104000&quot;, aoi=c(-87.7, 41.87, -87.6, 41.9))
+## Simple feature collection with 1 feature and 0 fields
+## Geometry type: POINT
+## Dimension:     XY
+## Bounding box:  xmin: -87.63218 ymin: 41.87803 xmax: -87.63218 ymax: 41.87803
+## Geodetic CRS:  GCS_Assumed_Geographic_1
+##                         geom
+## 1 POINT (-87.63218 41.87803)
+## &gt;</code></pre>
+<p>This is the ballpark accuracy result with the difference in the ellipsoid definitions taken into account, but no use made of the datum specification. The results for <strong>terra</strong> are the same:</p>
+<pre class="r"><code>lines &lt;- c(
+    &quot;Sys.setenv(\&quot;PROJ_NETWORK\&quot;=\&quot;ON\&quot;)&quot;,
+    &quot;CBTB &lt;- terra::vect(\&quot;CBTB.gpkg\&quot;)&quot;,
+    &quot;terra::geom(terra::project(CBTB, \&quot;ESRI:104000\&quot;))&quot;
+    )
+tf &lt;- tempfile(fileext=&quot;.R&quot;)
+writeLines(lines, con=tf)
+o &lt;- system(paste(&quot;R -q --vanilla -f&quot;, tf), intern=TRUE)
+cat(o[-1], sep=&quot;\n&quot;)</code></pre>
+<pre><code>## &gt; Sys.setenv(&quot;PROJ_NETWORK&quot;=&quot;ON&quot;)
+## &gt; CBTB &lt;- terra::vect(&quot;CBTB.gpkg&quot;)
+## &gt; terra::geom(terra::project(CBTB, &quot;ESRI:104000&quot;))
+##      geom part         x        y hole
+## [1,]    1    1 -87.63217 41.87802    0
+## &gt;</code></pre>
+<pre class="r"><code>lines &lt;- c(
+    &quot;Sys.unsetenv(\&quot;PROJ_NETWORK\&quot;)&quot;,
+    &quot;CBTB &lt;- terra::vect(\&quot;CBTB.gpkg\&quot;)&quot;,
+    &quot;terra::geom(terra::project(CBTB, \&quot;ESRI:104000\&quot;))&quot;
+    )
+tf &lt;- tempfile(fileext=&quot;.R&quot;)
+writeLines(lines, con=tf)
+o &lt;- system(paste(&quot;R -q --vanilla -f&quot;, tf), intern=TRUE)
+cat(o[-1], sep=&quot;\n&quot;)</code></pre>
+<pre><code>## &gt; Sys.unsetenv(&quot;PROJ_NETWORK&quot;)
+## &gt; CBTB &lt;- terra::vect(&quot;CBTB.gpkg&quot;)
+## &gt; terra::geom(terra::project(CBTB, &quot;ESRI:104000&quot;))
+##      geom part         x        y hole
+## [1,]    1    1 -87.63218 41.87803    0
+## &gt;</code></pre>
 </div>
 </div>
 <div id="crs-in-python-modules" class="section level1">
 <h1>CRS in Python modules</h1>
 <div id="representing-crs-in-python-modules" class="section level2">
 <h2>Representing CRS in Python modules</h2>
+<pre class="r"><code>td_py &lt;- tempfile()
+dir.create(td_py)
+Sys.setenv(&quot;PROJ_USER_WRITABLE_DIRECTORY&quot;=td_py)</code></pre>
+<p>The whole Python environment has shifted to Python 3, causing some churn among packages. For geospatial data, the <strong>geopandas</strong> package <span class="citation">(<a href="#ref-geopandas-package" role="doc-biblioref">Bossche, Jordahl, and Fleischmann 2022</a>)</span> uses a similar approach to the R <strong>sf</strong> package, representing data as a data frame with a geometry column. Unlike <strong>sf</strong>, <strong>geopandas</strong> does not itself link to PROJ, GDAL or GEOS, relying on the <strong>pyproj</strong> package for PR<span class="math inline">\(\phi\)</span>J <span class="citation">(<a href="#ref-pyproj-package" role="doc-biblioref">Snow et al. 2022</a>)</span>, linking to PR<span class="math inline">\(\phi\)</span>J.</p>
+<pre class="python"><code>import pyproj
+pyproj.show_versions()</code></pre>
+<pre><code>## pyproj info:
+##     pyproj: 3.4.0
+##       PROJ: 9.1.0
+##   data dir: /home/rsb/.local/lib/python3.11/site-packages/pyproj/proj_dir/share/proj
+## user_data_dir: /tmp/RtmptqO7US/fileed0316e980e84
+## PROJ DATA (recommended version): 1.11
+## PROJ Database: 1.2
+## EPSG Database: v10.074 [2022-08-01]
+## ESRI Database: ArcGIS Pro 3.0 [2022-07-09]
+## IGNF Database: 3.1.0 [2019-05-24]
+## 
+## System:
+##     python: 3.11.1 (main, Dec  7 2022, 00:00:00) [GCC 12.2.1 20221121 (Red Hat 12.2.1-4)]
+## executable: /usr/bin/python
+##    machine: Linux-6.0.15-300.fc37.x86_64-x86_64-with-glibc2.36
+## 
+## Python deps:
+##    certifi: 2022.9.24
+##     Cython: 0.29.32
+## setuptools: 62.6.0
+##        pip: 22.2.2</code></pre>
+<p>Here <strong>pyproj</strong> was installed using <code>pip</code>, so bundles its own copy of the metadata files:</p>
+<pre class="bash"><code>ls /home/rsb/.local/lib/python3.11/site-packages/pyproj/proj_dir/share/proj</code></pre>
+<pre><code>## CH
+## deformation_model.schema.json
+## GL27
+## ITRF2000
+## ITRF2008
+## ITRF2014
+## nad27
+## nad83
+## nad.lst
+## other.extra
+## proj.db
+## proj.ini
+## projjson.schema.json
+## triangulation.schema.json
+## world</code></pre>
+<p>A <code>&quot;CRS&quot;</code> object can be instantiated, typically using the same strings as with PR<span class="math inline">\(\phi\)</span>J itself:</p>
+<pre class="python"><code>crs = pyproj.crs.CRS(&#39;OGC:CRS84&#39;)
+crs</code></pre>
+<pre><code>## &lt;Geographic 2D CRS: OGC:CRS84&gt;
+## Name: WGS 84 (CRS84)
+## Axis Info [ellipsoidal]:
+## - Lon[east]: Geodetic longitude (degree)
+## - Lat[north]: Geodetic latitude (degree)
+## Area of Use:
+## - name: World.
+## - bounds: (-180.0, -90.0, 180.0, 90.0)
+## Datum: World Geodetic System 1984 ensemble
+## - Ellipsoid: WGS 84
+## - Prime Meridian: Greenwich</code></pre>
+<p>The object has a type, and this is the one used in objects in <strong>geopandas</strong></p>
+<pre class="python"><code>type(crs)</code></pre>
+<pre><code>## &lt;class &#39;pyproj.crs.crs.CRS&#39;&gt;</code></pre>
+<p>The object can be pretty-printed:</p>
+<pre class="python"><code>print(crs.to_wkt(pretty=True))</code></pre>
+<pre><code>## GEOGCRS[&quot;WGS 84 (CRS84)&quot;,
+##     ENSEMBLE[&quot;World Geodetic System 1984 ensemble&quot;,
+##         MEMBER[&quot;World Geodetic System 1984 (Transit)&quot;],
+##         MEMBER[&quot;World Geodetic System 1984 (G730)&quot;],
+##         MEMBER[&quot;World Geodetic System 1984 (G873)&quot;],
+##         MEMBER[&quot;World Geodetic System 1984 (G1150)&quot;],
+##         MEMBER[&quot;World Geodetic System 1984 (G1674)&quot;],
+##         MEMBER[&quot;World Geodetic System 1984 (G1762)&quot;],
+##         MEMBER[&quot;World Geodetic System 1984 (G2139)&quot;],
+##         ELLIPSOID[&quot;WGS 84&quot;,6378137,298.257223563,
+##             LENGTHUNIT[&quot;metre&quot;,1]],
+##         ENSEMBLEACCURACY[2.0]],
+##     PRIMEM[&quot;Greenwich&quot;,0,
+##         ANGLEUNIT[&quot;degree&quot;,0.0174532925199433]],
+##     CS[ellipsoidal,2],
+##         AXIS[&quot;geodetic longitude (Lon)&quot;,east,
+##             ORDER[1],
+##             ANGLEUNIT[&quot;degree&quot;,0.0174532925199433]],
+##         AXIS[&quot;geodetic latitude (Lat)&quot;,north,
+##             ORDER[2],
+##             ANGLEUNIT[&quot;degree&quot;,0.0174532925199433]],
+##     USAGE[
+##         SCOPE[&quot;Not known.&quot;],
+##         AREA[&quot;World.&quot;],
+##         BBOX[-90,-180,90,180]],
+##     ID[&quot;OGC&quot;,&quot;CRS84&quot;]]</code></pre>
+<p>The NAD83 (HARN) representation summary is:</p>
+<pre class="python"><code>pyproj.crs.CRS(&#39;EPSG:4152&#39;)</code></pre>
+<pre><code>## &lt;Geographic 2D CRS: EPSG:4152&gt;
+## Name: NAD83(HARN)
+## Axis Info [ellipsoidal]:
+## - Lat[north]: Geodetic latitude (degree)
+## - Lon[east]: Geodetic longitude (degree)
+## Area of Use:
+## - name: American Samoa - onshore - Tutuila, Aunu&#39;u, Ofu, Olesega, Ta&#39;u and Rose islands. Guam - onshore. Northern Mariana Islands - onshore. Puerto Rico - onshore. United States (USA) - onshore Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico, New York, North Carolina, North Dakota, Ohio, Oklahoma, Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah, Vermont, Virginia, Washington, West Virginia, Wisconsin and Wyoming; offshore Gulf of Mexico continental shelf (GoM OCS). US Virgin Islands - onshore.
+## - bounds: (144.58, -14.59, -64.51, 71.4)
+## Datum: NAD83 (High Accuracy Reference Network)
+## - Ellipsoid: GRS 1980
+## - Prime Meridian: Greenwich</code></pre>
+<p>and the deprecated NAD27 version:</p>
+<pre class="python"><code>pyproj.crs.CRS(&#39;ESRI:104000&#39;)</code></pre>
+<pre><code>## &lt;Geographic 2D CRS: ESRI:104000&gt;
+## Name: GCS_Assumed_Geographic_1
+## Axis Info [ellipsoidal]:
+## - Lat[north]: Geodetic latitude (degree)
+## - Lon[east]: Geodetic longitude (degree)
+## Area of Use:
+## - name: Not specified.
+## - bounds: (-180.0, -90.0, 180.0, 90.0)
+## Datum: North American Datum 1927
+## - Ellipsoid: Clarke 1866
+## - Prime Meridian: Greenwich</code></pre>
 <div id="working-in-s2-or-r2-1" class="section level3">
 <h3>Working in S2 or R2</h3>
+<p><strong>shapely</strong> interfaces GEOS, <strong>spherely</strong> interfaces S2Geometry, WIP. <a href="https://github.com/geopandas/community/issues/10" class="uri">https://github.com/geopandas/community/issues/10</a></p>
 </div>
 </div>
 <div id="discovering-transformation-pipelines-in-pyproj" class="section level2">
 <h2>Discovering transformation pipelines in <strong>pyproj</strong></h2>
+<p><strong>pyproj</strong> is directly based on PR<span class="math inline">\(\phi\)</span>J, so is based on findable transformation pipelines:</p>
+<pre class="python"><code>from pyproj.transformer import TransformerGroup</code></pre>
+<p>First turning off the CDN, we again find that only the ballpark accuracy is supported:</p>
+<pre class="python"><code>pyproj.network.set_network_enabled(False)
+tg = TransformerGroup(&#39;EPSG:4152&#39;, &#39;ESRI:104000&#39;, always_xy=True, area_of_interest=pyproj.aoi.AreaOfInterest(-87.7, 41.87, -87.6, 41.9))</code></pre>
+<pre><code>## /home/rsb/.local/lib/python3.11/site-packages/pyproj/transformer.py:197: UserWarning: Best transformation is not available due to missing Grid(short_name=us_noaa_conus.tif, full_name=, package_name=, url=https://cdn.proj.org/us_noaa_conus.tif, direct_download=True, open_license=True, available=False)
+##   super().__init__(</code></pre>
+<pre class="python"><code>tg</code></pre>
+<pre><code>## &lt;TransformerGroup: best_available=False&gt;
+## - transformers: 1
+## - unavailable_operations: 2</code></pre>
+<pre class="python"><code>import re
+print(re.sub(&quot;step&quot;, &quot;\nstep&quot;, tg.transformers[0].definition))</code></pre>
+<pre><code>## proj=noop ellps=GRS80</code></pre>
+<p>With CDN access provided, the three pipelines are available:</p>
+<pre class="python"><code>pyproj.network.set_network_enabled(True)
+tg = TransformerGroup(&#39;EPSG:4152&#39;, &#39;ESRI:104000&#39;, always_xy=True, area_of_interest=pyproj.aoi.AreaOfInterest(-87.7, 41.87, -87.6, 41.9))
+tg</code></pre>
+<pre><code>## &lt;TransformerGroup: best_available=True&gt;
+## - transformers: 3
+## - unavailable_operations: 0</code></pre>
+<pre class="python"><code>print(re.sub(&quot;step&quot;, &quot;\nstep&quot;, tg.transformers[0].definition))</code></pre>
+<pre><code>## proj=pipeline 
+## step proj=unitconvert xy_in=deg xy_out=rad 
+## step inv proj=hgridshift grids=us_noaa_ilhpgn.tif 
+## step inv proj=hgridshift grids=us_noaa_conus.tif 
+## step proj=unitconvert xy_in=rad xy_out=deg</code></pre>
 </div>
 <div id="transforming-spatial-objects-in-pyproj" class="section level2">
 <h2>Transforming spatial objects in <strong>pyproj</strong></h2>
-</div>
-<div id="using-the-cdn-in-pyproj" class="section level2">
-<h2>Using the CDN in <strong>pyproj</strong></h2>
+<p>We’ll start by just using point coordinates:</p>
+<pre class="python"><code>cx = -87.632222
+cy = 41.878056
+import numpy
+numpy.set_printoptions(precision=5, suppress=True)</code></pre>
+<p>A curiosity is that the ballpark accuracy pipeline appears to skip the ellipsoid correction:</p>
+<pre class="python"><code>ll2 = tg.transformers[2].transform(cx, cy)
+print(numpy.array(ll2))</code></pre>
+<pre><code>## [-87.63222  41.87806]</code></pre>
+<p>but with the 0.2m accuracy grid, the result is as expected:</p>
+<pre class="python"><code>ll0 = tg.transformers[0].transform(cx, cy)
+print(numpy.array(ll0))</code></pre>
+<pre><code>## [-87.63217  41.87802]</code></pre>
+<p>Again, a short script, as my console <code>python</code> finds working modules but via RStudio <code>pandas</code> fails to load:</p>
+<pre class="r"><code>lines &lt;- c(
+    &quot;import pyproj&quot;,
+    &quot;import geopandas&quot;,
+    &quot;CBTB = geopandas.read_file(&#39;CBTB.gpkg&#39;)&quot;,
+    &quot;print(CBTB)&quot;,
+    &quot;print(CBTB.crs.to_wkt(pretty=True))&quot;,
+    &quot;pyproj.network.set_network_enabled(False)&quot;,
+    &quot;NAD27_CBTB0 = CBTB.to_crs(&#39;ESRI:104000&#39;)&quot;,
+    &quot;print(NAD27_CBTB0)&quot;,
+    &quot;pyproj.network.set_network_enabled(True)&quot;,
+    &quot;NAD27_CBTB1 = CBTB.to_crs(&#39;ESRI:104000&#39;)&quot;,
+    &quot;print(NAD27_CBTB1)&quot;,
+    &quot;quit()&quot;
+)
+writeLines(lines, con=&quot;scr.py&quot;)
+Sys.setenv(&quot;GEOPANDAS_SCRIPT&quot;=&quot;scr.py&quot;)
+o &lt;- system(&quot;python -q -u $GEOPANDAS_SCRIPT&quot;, intern=TRUE)
+cat(o, sep=&quot;\n&quot;)</code></pre>
+<pre><code>##                      geometry
+## 0  POINT (-87.63222 41.87806)
+## GEOGCRS[&quot;NAD83(HARN)&quot;,
+##     DATUM[&quot;NAD83 (High Accuracy Reference Network)&quot;,
+##         ELLIPSOID[&quot;GRS 1980&quot;,6378137,298.257222101,
+##             LENGTHUNIT[&quot;metre&quot;,1]]],
+##     PRIMEM[&quot;Greenwich&quot;,0,
+##         ANGLEUNIT[&quot;degree&quot;,0.0174532925199433]],
+##     CS[ellipsoidal,2],
+##         AXIS[&quot;geodetic latitude (Lat)&quot;,north,
+##             ORDER[1],
+##             ANGLEUNIT[&quot;degree&quot;,0.0174532925199433]],
+##         AXIS[&quot;geodetic longitude (Lon)&quot;,east,
+##             ORDER[2],
+##             ANGLEUNIT[&quot;degree&quot;,0.0174532925199433]],
+##     USAGE[
+##         SCOPE[&quot;Horizontal component of 3D system.&quot;],
+##         AREA[&quot;American Samoa - onshore - Tutuila, Aunu&#39;u, Ofu, Olesega, Ta&#39;u and Rose islands. Guam - onshore. Northern Mariana Islands - onshore. Puerto Rico - onshore. United States (USA) - onshore Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico, New York, North Carolina, North Dakota, Ohio, Oklahoma, Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah, Vermont, Virginia, Washington, West Virginia, Wisconsin and Wyoming; offshore Gulf of Mexico continental shelf (GoM OCS). US Virgin Islands - onshore.&quot;],
+##         BBOX[-14.59,144.58,71.4,-64.51]],
+##     ID[&quot;EPSG&quot;,4152]]
+##                      geometry
+## 0  POINT (-87.63221 41.87805)
+##                      geometry
+## 0  POINT (-87.63217 41.87802)</code></pre>
 <div id="references" class="section level3 unnumbered">
 <h3 class="unnumbered">References</h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-bivand:21" class="csl-entry">
 Bivand, Roger. 2021. <span>“Progress in the <span>R</span> Ecosystem for Representing and Handling Spatial Data.”</span> <em>Journal of Geographical Systems</em> 23: 515–46. <a href="https://doi.org/10.1007/s10109-020-00336-0">https://doi.org/10.1007/s10109-020-00336-0</a>.
+</div>
+<div id="ref-geopandas-package" class="csl-entry">
+Bossche, Joris van den, Kelsey Jordahl, and Martin Fleischmann. 2022. <em>GeoPandas: Python Tools for Geographic Data</em>. GeoPandas. <a href="https://github.com/geopandas/geopandas">https://github.com/geopandas/geopandas</a>.
 </div>
 <div id="ref-evenden:90" class="csl-entry">
 Evenden, Gerald I. 1990. <em>Cartographic Projection Procedures for the <span>UNIX</span> Environment — a User’s Manual</em>. <a href="http://download.osgeo.org/proj/OF90-284.pdf">http://download.osgeo.org/proj/OF90-284.pdf</a>.
@@ -1116,6 +1479,9 @@ Pebesma, Edzer. 2018. <span>“<span class="nocase">Simple Features for <span>R<
 </div>
 <div id="ref-sdsr" class="csl-entry">
 Pebesma, Edzer, and Roger Bivand. 2023. <em>Spatial Data Science with Applications in <span>R</span></em>. Chapman &amp; Hall. <a href="https://www.routledge.com/Spatial-Data-Science-With-Applications-in-R/Pebesma-Bivand/p/book/9781138311183">https://www.routledge.com/Spatial-Data-Science-With-Applications-in-R/Pebesma-Bivand/p/book/9781138311183</a>.
+</div>
+<div id="ref-pyproj-package" class="csl-entry">
+Snow, Alan D., Jeff Whitaker, Micah Cochran, and Joris van den Bossche. 2022. <em>Python Interface to <span>PROJ</span></em>. pyproj4. <a href="https://github.com/pyproj4/pyproj">https://github.com/pyproj4/pyproj</a>.
 </div>
 </div>
 </div>
