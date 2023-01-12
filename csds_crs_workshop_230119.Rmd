@@ -168,6 +168,20 @@ may be fixed to tectonic plates (such as ETRS89), or may be dynamic.
 
 When a coordinate reference system is adequately defined, the coordinates can be placed on background maps, and integrated with other data sets, both with known coordinate reference systems. An adequate definition will further depend on the purposes for using the positional data, so that for higher precision it may also be necessary to specify the date of measurement, as tectonic plates move, although not fast.
 
+### Why have representations changed recently?
+
+Well, not very recently. Surveying in the field was the only way of measuring position until aerial observation became possible first from hot air baloons, then aircraft. Both aircraft and ships also needed to establish their own positions in order for observations (later aerial photographs) to be properly registered (usually to identifiable ground points established by mapping agencies). Astronomical fixes could also be used in cloud free conditions. In addition, many mapping agencies were military, not civilian, so details of their operations and products were classified.
+
+By the 1960s, earth observation from space became possible, but most outputs were classified, especially products with high enough resolution to match field surveying or aerial photography. All of these were very expensive, some depended in addition on cloud free conditions.
+
+The 1960s also saw the earliest measurements from space of the shape of the planet, leading to WGS66 (World Geodetic System), quickly followed by WGS72. These were also bolstered by land measurements of graviity anomaly fields. Both of these standards were developed in concert with the US Department of Defense.
+
+The 1970s saw the first military global navigation satellite systems, all classified, and with expensive receivers. The GPS system of a network of satellites sending time signals to be used to locate receivers was built on the next WGS iteration, WGS84. After 1989 and the (then) end of the Cold War, and the end of the degradation of accuracy for non-military purposes in 2000, GPS and WGS84 suddenly became pervasive also outside military applications.
+
+Datum transformation from the standards used by national mapping agencies to WGS84 became important, because without this, placing GPS/WGS84 positions on legacy maps was rather hit-and-miss. Some of us may recall that paper maps advertised GPS coordinates (axes were additionally printed in WGS84 degrees). This also affects web mapping, as the typical workflow is to transform the user coordinate reference system to a WGS84 geographical coordinate system, then on to the deservedly much abused Web Mercator projection. If the user coordinate reference system is unknown or inaccurate, the placing of observations on a web map becomes embarrassing as the viewer zooms in.
+
+Of course, 1984 is a long time ago, so while WGS84 is the reference system used by GPS, in fact newer iterations of the International Terrestrial Reference System have been introduced https://en.wikipedia.org/wiki/International_Terrestrial_Reference_System_and_Frame
+
 ### Hidden assuptions
 
 Sometimes, assumptions are made in specification definitions. In the GeoPackage definition, https://gdal.org/drivers/vector/gpkg.html#coordinate-reference-systems, an undefined ellipsoidal (geographical) coordinate reference system in decimal degrees is assumed if no definition is given. Consequently, even not defining a coordinate reference system may have consequences, particularly if data sets are being shared with others in a more complex workflow.
@@ -360,6 +374,8 @@ knitr::include_graphics('vemos.png')
 
 ### Transformation pipelines example: Chicago Board of Trade Building
 
+Previous talks have used the Broad Street pump as an example; in that case the need for care is more obvious, with a larger degradation [@bivand:21], https://link.springer.com/article/10.1007/s10109-020-00336-0/figures/8
+
 Assume that we take the Chicago Board of Trade Building as a reference point, and assume that the point location given by Wikipedia https://en.wikipedia.org/wiki/Chicago_Board_of_Trade_Building, 41.878056, -87.632222, is adequately accurate. Note that the axis order of the coordinates is given as latitude-longitude. Say we wish to compare this modern point observation (assumed to be in NAD83(HARN) - (High Accuracy Reference Network) with an older map in NAD27. These are the full WKT2:2019 representations of these GEOGCRS:
 
 ```{bash}
@@ -470,8 +486,6 @@ plot(r[,,,1:2], axes = TRUE, hook = hook, key.pos = 4, col=cm.colors)
 
 # CRS in R packages
 
-
-
 ## Representing CRS in R packages
 
 ### CRS in R before PROJ 
@@ -569,7 +583,6 @@ sf::st_is_longlat(sf::st_crs("ESRI:104000"))
 The background is described in https://r-spatial.org/r/2020/06/17/s2.html and https://r-spatial.org/book/04-Spherical.html. The main consequences are felt when our common assumption that a straight line between two points (which holds on the plane) is challenged on the sphere. Distances are generally not a problem, but topological operations on objects with a higher dimension than 0 may need re-noding to avoid curved slivers. Since **s2** is available, treating S2 as R2 is no longer defensible.
 
 
-
 ### The **terra** package
 
 The **terra** package also uses `OGRSpatialReference` for instantiating CRS objects, both for vector and raster objects:
@@ -646,6 +659,10 @@ raster::crs(r)
 ```
 
 Very possibly, use of the cache should be exposed, and its default possibly changed, although in most settings runtime is reduced when the same CRS is being instantiated many times (this is very typical).
+
+### Exercises (if time permits oor later)
+
+Visit https://jakubnowosad.com/spData/ https://cran.r-project.org/package=spData and/or  https://geodacenter.github.io/data-and-lab/ and try to discover the CRS of the included data sets.
 
 ## Discovering transformation pipelines in **sf**
 
@@ -752,6 +769,10 @@ writeLines(lines, con=tf)
 o <- system(paste("R -q --vanilla -f", tf), intern=TRUE)
 cat(o[-1], sep="\n")
 ```
+
+### Exercises (if time permits or later)
+
+Perform self-chosen datum transformations on selected data sets examined before.
 
 ## Non-PR$\phi$J projections
 

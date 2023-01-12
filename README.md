@@ -6,3 +6,4 @@ Study group: Modernizing R-spatial: Changes in OSGeo FOSS Libraries and the Evol
 
 Workshop: Coordinate reference systems; https://spatial.uchicago.edu/content/2023 (Thursday, January 19, 10:00 CT)
 
+
