@@ -1,7 +1,7 @@
 ---
 title: "Center for Spatial Data Science 2023 workshop and study group materials"
 author: "Roger Bivand"
-date: "9 January 2023"
+date: "13 January 2023"
 output: 
   html_document:
 theme: united
