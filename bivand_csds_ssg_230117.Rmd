@@ -494,9 +494,9 @@ tipsae
 
 - Using templated texts, github issues were raised for the 167 packages listing a github repository, and individual emails sent to the remainder
 
-- Within four weeks and over the holiday period, activity was observed for 33\% of the packages (33\% of those using retiring packages in code)
+- Within four weeks and over the holiday period, activity was observed for 34\% of the packages (36\% of those using retiring packages in code)
 
-- 43\% of the github issues showed activity, but only 12\% of the emails elicited any response (only one bounced, but false positive spam detection is not unlikely)
+- 45\% of the github issues showed activity, but only 12\% of the emails elicited any response (only one bounced, but false positive spam detection is not unlikely)
 
 - By January 12, 2023, 27 of the 248 surveyed packages no longer `"most"` depended on **rgdal** or **rgeos**, 19 of these had responded to contact, and some of the others had been archived
 
