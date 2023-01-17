@@ -68,7 +68,7 @@ saveRDS(z, file="all_z_221222.rds")
 
 - Work is under way to replace some of the use of **rgdal** and **rgeos** in **sp** by calls to **sf**, so **sp** workflows should continue to function after adaptation
 
-- The maintainer of **raster**, Rober Hijmans, has already replaced calls to **rgdal** and **rgeos** in **raster** by calls to **terra**
+- The maintainer of **raster**, Robert Hijmans, has already replaced calls to **rgdal** and **rgeos** in **raster** by calls to **terra**
 
 ## Background
 
