@@ -217,9 +217,28 @@ Of course, 1984 is a long time ago, so while WGS84 is the reference system used 
 
 Sometimes, assumptions are made in specification definitions. In the GeoPackage definition, https://gdal.org/drivers/vector/gpkg.html#coordinate-reference-systems, an undefined ellipsoidal (geographical) coordinate reference system in decimal degrees is assumed if no definition is given. Consequently, even not defining a coordinate reference system may have consequences, particularly if data sets are being shared with others in a more complex workflow.
 
+
+
 ## Unknown or arbitrary coordinate reference systems
 
 It may also be desirable to specify a planar coordinate reference system as unknown, with no known metric or even axis direction. This might be needed for anonymizing data such as the location of protected species, or for confidentiality reasons. The same may occur when data are placed in a rectangle with unit longest sides for point pattern analysis and rotated and/or flipped; the metric here will be seen as arbitrary.
+
+```{r}
+data(boston, package="spData")
+boston_NA <- sf::st_as_sf(boston.c, coords=c("LON", "LAT"))
+sf::st_crs(boston_NA)
+```
+
+```{r}
+tf <- tempfile(fileext=".gpkg")
+sf::st_write(boston_NA, tf)
+```
+
+I am running the development version `1.0.10` of **sf**, so the new unknown CRS is inserted https://github.com/r-spatial/sf/blob/158fd317d39dca5e5139dec3e8c5c80f33cdfac6/R/read.R#L466-L469; the CRAN version `1.0.9` has the older behaviour.
+
+```{r}
+sf::st_crs(sf::st_read(tf, quiet=TRUE))
+```
 
 ### Discovering legacy datums and projections
 
