@@ -297,7 +297,7 @@ PROJ.4 used a simple `+key=value` representation for PROJCRS, extended as noted 
 
 Coordinate reference systems following ISO 19111 should be represented as Well-Known Text 2 (2019) (WKT2:2019) objects. One consequence is that file formats not supporting the WKT2:2019 representation may degrade the CRS on writing (or reading). One such legacy file format is the `ESRI Shapefile`, which writes a WKT1 in ESRI dialect into the `.prj` file.
 
-As an example, let us use the simple `"OGD:CRS84"` longitude-latitude WGS84 WKT2:2019 representation used by among others GeoJSON files https://geojson.org/ https://www.rfc-editor.org/rfc/rfc7946#page-12 using the PR$\phi$J program `projinfo`:
+As an example, let us use the simple `"OGC:CRS84"` longitude-latitude WGS84 WKT2:2019 representation used by among others GeoJSON files https://geojson.org/ https://www.rfc-editor.org/rfc/rfc7946#page-12 using the PR$\phi$J program `projinfo`:
 
 ```{bash}
 projinfo OGC:CRS84
