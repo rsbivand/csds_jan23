@@ -20,7 +20,7 @@ knitr::opts_chunk$set(echo = TRUE, paged.print=FALSE)
 
 # Introduction
 
-The usefulness of spatial data is linked to knowing its coordinate reference system. If the coordinate reference system is unknown, the information in the data set may not readily be integrated with other data using position. Further, metric information may not be readily used to measure distances between observations.
+The usefulness of a spatial data set is linked to knowing its coordinate reference system. If the coordinate reference system is unknown, the information in the data set may not readily be integrated with other data sets using position. Further, metric information may not be readily used to measure distances between observations.
 
 In this workshop, we will review the background to coordinate reference systems based on @sdsr (also to be found at https://r-spatial/book), and look somewhat more closely at datum transformation in the context of advances in the PR$\phi$J software implementation.
 
@@ -31,15 +31,15 @@ We will then go on to see how coordinate reference systems are handled, and datu
 Before we can try to understand geometries like points, lines,
 polygons, coverage and grids, it is useful to review coordinate
 systems so that we have an idea what exactly coordinates of a
-point reflect.  For spatial data, the location of observations
+point reflect.  For spatial data, the locations of observations
 are characterised by coordinates, and coordinates are defined in
 a coordinate system.  Different coordinate systems can be used for
 this, and the most important difference is whether coordinates are
 defined over a 2-dimensional or 3-dimensional space referenced
 to orthogonal axes (Cartesian coordinates), or using distance
 and directions (polar coordinates, spherical and ellipsoidal
-coordinates). Besides a location of observation, all observations
-are associated with time of observation. 
+coordinates). Besides their locations, all observations
+are associated with time(s) of observation. 
 
 For many quantities, the natural origin of values is zero. This
 works for amounts, where differences between amounts result in
@@ -48,6 +48,7 @@ have a natural zero interpretation: distance and duration.  Absolute
 location (position) and time need a fixed origin, from which we
 can meaningfully measure other absolute space-time points: we
 call this **a datum**.
+
 For space, a datum involves more than one dimension. The combination
 of a datum and a measurement unit (scale) is a _reference system_.
 
@@ -170,11 +171,11 @@ When a coordinate reference system is adequately defined, the coordinates can be
 
 ### Why have representations changed recently?
 
-Well, not very recently. Surveying in the field was the only way of measuring position until aerial observation became possible first from hot air baloons, then aircraft. Both aircraft and ships also needed to establish their own positions in order for observations (later aerial photographs) to be properly registered (usually to identifiable ground points established by mapping agencies). Astronomical fixes could also be used in cloud free conditions. In addition, many mapping agencies were military, not civilian, so details of their operations and products were classified.
+Well, not very recently. Surveying in the field was the only way of measuring position until aerial observation became possible first from hot air balloons, then aircraft. Both aircraft and ships also needed to establish their own positions in order for observations (later aerial photographs) to be properly registered (usually to identifiable ground points established by mapping agencies). Astronomical fixes could also be used in cloud free conditions. In addition, many mapping agencies were military, not civilian, so details of their operations and products were classified.
 
 By the 1960s, earth observation from space became possible, but most outputs were classified, especially products with high enough resolution to match field surveying or aerial photography. All of these were very expensive, some depended in addition on cloud free conditions.
 
-The 1960s also saw the earliest measurements from space of the shape of the planet, leading to WGS66 (World Geodetic System), quickly followed by WGS72. These were also bolstered by land measurements of graviity anomaly fields. Both of these standards were developed in concert with the US Department of Defense.
+The 1960s also saw the earliest measurements from space of the shape of the planet, leading to WGS66 (World Geodetic System), quickly followed by WGS72. These were also bolstered by land measurements of gravity anomaly fields. Both of these standards were developed in concert with the US Department of Defense.
 
 The 1970s saw the first military global navigation satellite systems, all classified, and with expensive receivers. The GPS system of a network of satellites sending time signals to be used to locate receivers was built on the next WGS iteration, WGS84. After 1989 and the (then) end of the Cold War, and the end of the degradation of accuracy for non-military purposes in 2000, GPS and WGS84 suddenly became pervasive also outside military applications.
 
