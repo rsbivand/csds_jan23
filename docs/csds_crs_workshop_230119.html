@@ -424,7 +424,7 @@ Sys.setenv(&quot;_SP_EVOLUTION_STATUS_&quot;=0)</code></pre>
 ##     ID[&quot;OGC&quot;,&quot;CRS84&quot;]]</code></pre>
 <p>This information is collated from SQL queries executed on the <code>proj.db</code> SQLite database installed with PR<span class="math inline">\(\phi\)</span>J (since version 6) and found on the searchpath, the first element of which is user-writable (since version 7):</p>
 <pre class="bash"><code>projinfo --searchpaths</code></pre>
-<pre><code>## /tmp/RtmpgSoPja/file6b673c6193a1
+<pre><code>## /tmp/RtmpsOLmQa/file803b7efaad98
 ## /usr/local/share/proj
 ## /usr/local/share/proj</code></pre>
 <p>This database may be examined using standard tools:</p>
@@ -1259,17 +1259,17 @@ cat(o[-1], sep=&quot;\n&quot;)</code></pre>
 <h1>CRS in Python modules</h1>
 <div id="representing-crs-in-python-modules" class="section level2">
 <h2>Representing CRS in Python modules</h2>
+<p>The whole Python environment has shifted to Python 3, causing some churn among packages. For geospatial data, the <strong>geopandas</strong> package <span class="citation">(<a href="#ref-geopandas-package" role="doc-biblioref">Bossche, Jordahl, and Fleischmann 2022</a>)</span> uses a similar approach to the R <strong>sf</strong> package, representing data as a data frame with a geometry column. Unlike <strong>sf</strong>, <strong>geopandas</strong> does not itself link to PROJ, GDAL or GEOS, relying on the <strong>pyproj</strong> package for PR<span class="math inline">\(\phi\)</span>J <span class="citation">(<a href="#ref-pyproj-package" role="doc-biblioref">Snow et al. 2022</a>)</span>, linking to PR<span class="math inline">\(\phi\)</span>J.</p>
 <pre class="r"><code>td_py &lt;- tempfile()
 dir.create(td_py)
 Sys.setenv(&quot;PROJ_USER_WRITABLE_DIRECTORY&quot;=td_py)</code></pre>
-<p>The whole Python environment has shifted to Python 3, causing some churn among packages. For geospatial data, the <strong>geopandas</strong> package <span class="citation">(<a href="#ref-geopandas-package" role="doc-biblioref">Bossche, Jordahl, and Fleischmann 2022</a>)</span> uses a similar approach to the R <strong>sf</strong> package, representing data as a data frame with a geometry column. Unlike <strong>sf</strong>, <strong>geopandas</strong> does not itself link to PROJ, GDAL or GEOS, relying on the <strong>pyproj</strong> package for PR<span class="math inline">\(\phi\)</span>J <span class="citation">(<a href="#ref-pyproj-package" role="doc-biblioref">Snow et al. 2022</a>)</span>, linking to PR<span class="math inline">\(\phi\)</span>J.</p>
 <pre class="python"><code>import pyproj
 pyproj.show_versions()</code></pre>
 <pre><code>## pyproj info:
-##     pyproj: 3.4.0
+##     pyproj: 3.4.1
 ##       PROJ: 9.1.0
 ##   data dir: /home/rsb/.local/lib/python3.11/site-packages/pyproj/proj_dir/share/proj
-## user_data_dir: /tmp/RtmpgSoPja/file6b675a082620
+## user_data_dir: /tmp/RtmpsOLmQa/file803b414bc88e
 ## PROJ DATA (recommended version): 1.11
 ## PROJ Database: 1.2
 ## EPSG Database: v10.074 [2022-08-01]
@@ -1283,7 +1283,7 @@ pyproj.show_versions()</code></pre>
 ## 
 ## Python deps:
 ##    certifi: 2022.9.24
-##     Cython: 0.29.32
+##     Cython: None
 ## setuptools: 62.6.0
 ##        pip: 22.2.2</code></pre>
 <p>Here <strong>pyproj</strong> was installed using <code>pip</code>, so bundles its own copy of the metadata files:</p>
@@ -1416,7 +1416,7 @@ tg</code></pre>
 cy = 41.878056
 import numpy
 numpy.set_printoptions(precision=5, suppress=True)</code></pre>
-<p>A curiosity is that the ballpark accuracy pipeline appears to skip the ellipsoid correction:</p>
+<p>A curiosity is that the ballpark accuracy pipeline does not agree with <strong>sf</strong>:</p>
 <pre class="python"><code>ll2 = tg.transformers[2].transform(cx, cy)
 print(numpy.array(ll2))</code></pre>
 <pre><code>## [-87.63222  41.87806]</code></pre>
@@ -1427,6 +1427,7 @@ print(numpy.array(ll0))</code></pre>
 <p>Again, a short script, as my console <code>python</code> finds working modules but via RStudio <code>pandas</code> fails to load:</p>
 <pre class="r"><code>lines &lt;- c(
     &quot;import pyproj&quot;,
+    &quot;print(pyproj.datadir.get_data_dir())&quot;,
     &quot;import geopandas&quot;,
     &quot;CBTB = geopandas.read_file(&#39;CBTB.gpkg&#39;)&quot;,
     &quot;print(CBTB)&quot;,
@@ -1443,7 +1444,55 @@ writeLines(lines, con=&quot;scr.py&quot;)
 Sys.setenv(&quot;GEOPANDAS_SCRIPT&quot;=&quot;scr.py&quot;)
 o &lt;- system(&quot;python -q -u $GEOPANDAS_SCRIPT&quot;, intern=TRUE)
 cat(o, sep=&quot;\n&quot;)</code></pre>
-<pre><code>##                      geometry
+<pre><code>## /home/rsb/.local/lib/python3.11/site-packages/pyproj/proj_dir/share/proj
+##                      geometry
+## 0  POINT (-87.63222 41.87806)
+## GEOGCRS[&quot;NAD83(HARN)&quot;,
+##     DATUM[&quot;NAD83 (High Accuracy Reference Network)&quot;,
+##         ELLIPSOID[&quot;GRS 1980&quot;,6378137,298.257222101,
+##             LENGTHUNIT[&quot;metre&quot;,1]]],
+##     PRIMEM[&quot;Greenwich&quot;,0,
+##         ANGLEUNIT[&quot;degree&quot;,0.0174532925199433]],
+##     CS[ellipsoidal,2],
+##         AXIS[&quot;geodetic latitude (Lat)&quot;,north,
+##             ORDER[1],
+##             ANGLEUNIT[&quot;degree&quot;,0.0174532925199433]],
+##         AXIS[&quot;geodetic longitude (Lon)&quot;,east,
+##             ORDER[2],
+##             ANGLEUNIT[&quot;degree&quot;,0.0174532925199433]],
+##     USAGE[
+##         SCOPE[&quot;Horizontal component of 3D system.&quot;],
+##         AREA[&quot;American Samoa - onshore - Tutuila, Aunu&#39;u, Ofu, Olesega, Ta&#39;u and Rose islands. Guam - onshore. Northern Mariana Islands - onshore. Puerto Rico - onshore. United States (USA) - onshore Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico, New York, North Carolina, North Dakota, Ohio, Oklahoma, Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah, Vermont, Virginia, Washington, West Virginia, Wisconsin and Wyoming; offshore Gulf of Mexico continental shelf (GoM OCS). US Virgin Islands - onshore.&quot;],
+##         BBOX[-14.59,144.58,71.4,-64.51]],
+##     ID[&quot;EPSG&quot;,4152]]
+##                      geometry
+## 0  POINT (-87.63221 41.87805)
+##                      geometry
+## 0  POINT (-87.63217 41.87802)</code></pre>
+<pre class="r"><code>lines &lt;- c(
+    &quot;import pyproj&quot;,
+    &quot;print(pyproj.datadir.get_data_dir())&quot;,
+    &quot;pyproj.datadir.set_data_dir(&#39;/usr/local/share/proj&#39;)&quot;,
+    &quot;print(pyproj.datadir.get_data_dir())&quot;,
+    &quot;import geopandas&quot;,
+    &quot;CBTB = geopandas.read_file(&#39;CBTB.gpkg&#39;)&quot;,
+    &quot;print(CBTB)&quot;,
+    &quot;print(CBTB.crs.to_wkt(pretty=True))&quot;,
+    &quot;pyproj.network.set_network_enabled(False)&quot;,
+    &quot;NAD27_CBTB0 = CBTB.to_crs(&#39;ESRI:104000&#39;)&quot;,
+    &quot;print(NAD27_CBTB0)&quot;,
+    &quot;pyproj.network.set_network_enabled(True)&quot;,
+    &quot;NAD27_CBTB1 = CBTB.to_crs(&#39;ESRI:104000&#39;)&quot;,
+    &quot;print(NAD27_CBTB1)&quot;,
+    &quot;quit()&quot;
+)
+writeLines(lines, con=&quot;scr.py&quot;)
+Sys.setenv(&quot;GEOPANDAS_SCRIPT&quot;=&quot;scr.py&quot;)
+o &lt;- system(&quot;python -q -u $GEOPANDAS_SCRIPT&quot;, intern=TRUE)
+cat(o, sep=&quot;\n&quot;)</code></pre>
+<pre><code>## /home/rsb/.local/lib/python3.11/site-packages/pyproj/proj_dir/share/proj
+## /usr/local/share/proj
+##                      geometry
 ## 0  POINT (-87.63222 41.87806)
 ## GEOGCRS[&quot;NAD83(HARN)&quot;,
 ##     DATUM[&quot;NAD83 (High Accuracy Reference Network)&quot;,

@@ -789,25 +789,25 @@ https://observablehq.com/collection/@d3/d3-geo-projection
 
 ## Representing CRS in Python modules
 
+The whole Python environment has shifted to Python 3, causing some churn among packages. For geospatial data, the **geopandas** package  [@geopandas-package] uses a similar approach to the R **sf** package, representing data as a data frame with a geometry column. Unlike **sf**, **geopandas** does not itself link to PROJ, GDAL or GEOS, relying on the **pyproj** package for PR$\phi$J [@pyproj-package], linking to PR$\phi$J. 
+
 ```{r set-options-cdn1}
 td_py <- tempfile()
 dir.create(td_py)
 Sys.setenv("PROJ_USER_WRITABLE_DIRECTORY"=td_py)
 ```
 
-The whole Python environment has shifted to Python 3, causing some churn among packages. For geospatial data, the **geopandas** package  [@geopandas-package] uses a similar approach to the R **sf** package, representing data as a data frame with a geometry column. Unlike **sf**, **geopandas** does not itself link to PROJ, GDAL or GEOS, relying on the **pyproj** package for PR$\phi$J [@pyproj-package], linking to PR$\phi$J. 
-
 
 ```{python}
 import pyproj
 pyproj.show_versions()
 ```
-
 Here **pyproj** was installed using `pip`, so bundles its own copy of the metadata files:
 
 ```{bash}
 ls /home/rsb/.local/lib/python3.11/site-packages/pyproj/proj_dir/share/proj
 ```
+
 A `"CRS"` object can be instantiated, typically using the same strings as with PR$\phi$J itself:
 
 ```{python}
@@ -882,7 +882,7 @@ import numpy
 numpy.set_printoptions(precision=5, suppress=True)
 ```
 
-A curiosity is that the ballpark accuracy pipeline appears to skip the ellipsoid correction:
+A curiosity is that the ballpark accuracy pipeline does not agree with **sf**:
 
 ```{python}
 ll2 = tg.transformers[2].transform(cx, cy)
@@ -899,6 +899,7 @@ Again, a short script, as my console `python` finds working modules but via RStu
 ```{r}
 lines <- c(
     "import pyproj",
+    "print(pyproj.datadir.get_data_dir())",
     "import geopandas",
     "CBTB = geopandas.read_file('CBTB.gpkg')",
     "print(CBTB)",
@@ -917,6 +918,30 @@ o <- system("python -q -u $GEOPANDAS_SCRIPT", intern=TRUE)
 cat(o, sep="\n")
 ```
 
+
+```{r}
+lines <- c(
+    "import pyproj",
+    "print(pyproj.datadir.get_data_dir())",
+    "pyproj.datadir.set_data_dir('/usr/local/share/proj')",
+    "print(pyproj.datadir.get_data_dir())",
+    "import geopandas",
+    "CBTB = geopandas.read_file('CBTB.gpkg')",
+    "print(CBTB)",
+    "print(CBTB.crs.to_wkt(pretty=True))",
+    "pyproj.network.set_network_enabled(False)",
+    "NAD27_CBTB0 = CBTB.to_crs('ESRI:104000')",
+    "print(NAD27_CBTB0)",
+    "pyproj.network.set_network_enabled(True)",
+    "NAD27_CBTB1 = CBTB.to_crs('ESRI:104000')",
+    "print(NAD27_CBTB1)",
+    "quit()"
+)
+writeLines(lines, con="scr.py")
+Sys.setenv("GEOPANDAS_SCRIPT"="scr.py")
+o <- system("python -q -u $GEOPANDAS_SCRIPT", intern=TRUE)
+cat(o, sep="\n")
+```
 
 ### References
 
