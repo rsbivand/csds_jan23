@@ -22,7 +22,7 @@ knitr::opts_chunk$set(echo = TRUE, paged.print=FALSE)
 
 The usefulness of a spatial data set is linked to knowing its coordinate reference system. If the coordinate reference system is unknown, the information in the data set may not readily be integrated with other data sets using position. Further, metric information may not be readily used to measure distances between observations.
 
-In this workshop, we will review the background to coordinate reference systems based on @sdsr (also to be found at https://r-spatial/book), and look somewhat more closely at datum transformation in the context of advances in the PR$\phi$J software implementation.
+In this workshop, we will review the background to coordinate reference systems based on @sdsr (also to be found at https://r-spatial.org/book), and look somewhat more closely at datum transformation in the context of advances in the PR$\phi$J software implementation.
 
 We will then go on to see how coordinate reference systems are handled, and datum transformations supported, in R packages and Python modules. The use of the S2 Geometry library will also be mentioned.
 
