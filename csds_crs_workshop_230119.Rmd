@@ -181,6 +181,28 @@ The 1970s saw the first military global navigation satellite systems, all classi
 
 Datum transformation from the standards used by national mapping agencies to WGS84 became important, because without this, placing GPS/WGS84 positions on legacy maps was rather hit-and-miss. Some of us may recall that paper maps advertised GPS coordinates (axes were additionally printed in WGS84 degrees). This also affects web mapping, as the typical workflow is to transform the user coordinate reference system to a WGS84 geographical coordinate system, then on to the deservedly much abused Web Mercator projection. If the user coordinate reference system is unknown or inaccurate, the placing of observations on a web map becomes embarrassing as the viewer zooms in.
 
+_Warning: January 19 version goes astray here:_ the local default user-writable directory containing the cache file is not empty:
+
+```{r}
+(pths <- sf::sf_proj_search_paths())
+```
+
+```{r}
+list.files(pths[1])
+```
+
+```{r}
+library(RSQLite)
+db <- dbConnect(SQLite(), dbname=file.path(pths[1], "cache.db"))
+dbReadTable(db, "chunks")
+```
+
+```{r}
+dbDisconnect(db)
+```
+
+_So the presentation of January 19 started using `conus.tif` because it was available in the local default user-writable directory, but did not obtain the full accuracy that the NAD83 (HARN) grid made available._
+
 For example, if we guess that the point representation of tracts in the 1996 correction of the Boston data set are WGS84:
 
 ```{r}
@@ -502,19 +524,6 @@ list.files(td)
 
 The tables in the database can be listed:
 
-```{r}
-db <- dbConnect(SQLite(), dbname=file.path(td, "cache.db"))
-dbListTables(db)
-```
-and the catalogue in the `"chunks"` table shown:
-
-```{r}
-dbReadTable(db, "chunks")
-```
-
-```{r}
-dbDisconnect(db)
-```
 
 The first CDN access downloads required chunks as Tiff files; on subsequent use, the chunks may be checked for staleness. 
 
