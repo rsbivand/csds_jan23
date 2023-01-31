@@ -190,28 +190,6 @@ The 1970s saw the first military global navigation satellite systems, all classi
 
 Datum transformation from the standards used by national mapping agencies to WGS84 became important, because without this, placing GPS/WGS84 positions on legacy maps was rather hit-and-miss. Some of us may recall that paper maps advertised GPS coordinates (axes were additionally printed in WGS84 degrees). This also affects web mapping, as the typical workflow is to transform the user coordinate reference system to a WGS84 geographical coordinate system, then on to the deservedly much abused Web Mercator projection. If the user coordinate reference system is unknown or inaccurate, the placing of observations on a web map becomes embarrassing as the viewer zooms in.
 
-_Warning: January 19 version goes astray here:_ the local default user-writable directory containing the cache file was then not empty:
-
-```{r}
-(pths <- sf::sf_proj_search_paths())
-```
-
-```{r}
-list.files(pths[1])
-```
-
-```{r}
-library(RSQLite)
-if (length(list.files(pths[1])) > 0L) {
-db <- dbConnect(SQLite(), dbname=file.path(pths[1], "cache.db"))
-unique(dbReadTable(db, "chunks")$url)
-dbDisconnect(db)
-}
-```
-
-_So the presentation of January 19 started using `us_noaa_conus.tif` because it was available in the current working directory for a figure below and in the local default user-writable directory, but did not obtain the full accuracy that the NAD83 (HARN) grid made available._
-
-
 To stabilise this version of the presentation, we'll set some environment variables:
 
 ```{r set-options-cdn}
@@ -219,41 +197,12 @@ td <- tempfile()
 dir.create(td)
 Sys.setenv("PROJ_USER_WRITABLE_DIRECTORY"=td)
 Sys.setenv("PROJ_NETWORK"="ON")
-Sys.setenv("PROJ_DATA"="/usr/local/share/proj")
+(pths <- sf::sf_proj_search_paths())
 ```
-
-For example, if we guess that the point representation of tracts in the 1996 correction of the Boston data set are WGS84:
-
 ```{r}
-data(boston, package="spData")
-boston <- sf::st_as_sf(boston.c, coords=c("LON", "LAT"), crs="OGC:CRS84")
-mapview::mapview(sf::st_geometry(boston))
+list.files(pths[1])
 ```
 
-These discrepancies stem from displacement when digitising in the early 1990s, but the relative positions of the tracts are preserved.
-
-There is a further offset problem that is hard to disentangle. In 2011 I downloaded the tract boundaries for 1990, back-aggregated to 1980 and 1970, and guessed NAD83 (1990 boundaries):
-
-```{r}
-boston.tr <- sf::st_read(system.file("shapes/boston_tracts.shp",
-                           package="spData")[1])
-```
-
-```{r}
-boston.tr |> sf::st_set_crs("EPSG:4269") -> boston.83
-```
-
-```{r}
-mapview::mapview(boston.83[,"censored"])
-```
-
-but the tract boundaries do not match street lines; NAD27 is a better fit:
-
-```{r}
-mapview::mapview(boston.tr[,"censored"])
-```
-
-Of course, 1984 is a long time ago, so while WGS84 is the reference system used by GPS, in fact newer iterations of the International Terrestrial Reference System have been introduced https://en.wikipedia.org/wiki/International_Terrestrial_Reference_System_and_Frame
 
 ### Hidden assuptions
 
@@ -458,9 +407,6 @@ Note that both the datums and the ellipsoids differ, so that some change in the 
 
 ```{r}
 Sys.unsetenv("PROJ_NETWORK")
-td <- tempfile()
-dir.create(td)
-Sys.setenv("PROJ_USER_WRITABLE_DIRECTORY"=td)
 ```
 
 ```{bash}
@@ -473,9 +419,6 @@ In general in North America transformation grids are needed, while in many other
 
 Let us check the status of the `PROJ_NETWORK` environment variable:
 
-```{r}
-Sys.getenv("PROJ_NETWORK")
-```
 ```{bash}
 echo $PROJ_NETWORK
 ```
@@ -494,7 +437,7 @@ The most accurate direct transformation pipelines may need transformation grids 
 Instead of installing lots of unneeded grids, which may become stale, use can be made of an on-demand content download network https://cdn.proj.org from within PROJ, using CURL for download and TIFF as the unified grid format (Cloud Optimized GeoTiff). On-demand use creates a user-writeable `cache.db` SQLite database of grid chunks, which may be used across applications looking at the same `PROJ_LIB` directory:
 
 ```{r}
-list.files(td)
+list.files(pths[1])
 ```
 
 ```{r}
@@ -518,13 +461,13 @@ Sys.unsetenv("PROJ_NETWORK")
 The user-writable directory now contains a `cache.db` SQLite database of downloaded grid chunks:
 
 ```{r}
-list.files(td)
+list.files(pths[1])
 ```
 
 The tables in the database can be listed:
 
 ```{r}
-db <- dbConnect(SQLite(), dbname=file.path(td, "cache.db"))
+db <- dbConnect(SQLite(), dbname=file.path(pths[1], "cache.db"))
 dbListTables(db)
 ```
 and the catalogue in the `"chunks"` table shown:
@@ -759,18 +702,6 @@ Visit https://jakubnowosad.com/spData/ https://cran.r-project.org/package=spData
 ## Discovering transformation pipelines in **sf**
 
 ```{r}
-Sys.unsetenv("PROJ_NETWORK")
-```
-
-```{r}
-sf::sf_proj_network()
-```
-
-```{r}
-sf::sf_proj_network(FALSE)
-```
-
-```{r}
 sf::sf_proj_network()
 ```
 
@@ -810,7 +741,7 @@ We'll write out the CBTB point for further use:
 ```{r}
 sf::st_write(CBTB, "CBTB.gpkg", append=FALSE)
 ```
-To regain control for the purpose of demonstrating how to enable and disable the CDN with reasonable certainty, at least the `PROJ_NETWORK` environment variable needs to be set *before* **sf** is loaded (or analogously **terra** is loaded). Here we'll start minimal R sessions, setting the environment variable before anything else. 
+To regain control for the purpose of demonstrating how to enable and disable the CDN with reasonable certainty, at least the `PROJ_NETWORK` environment variable needs to be set *before* **sf** is loaded (or analogously **terra** is loaded). 
 
 ```{r}
 lines <- c(
@@ -823,7 +754,6 @@ writeLines(lines, con=tf)
 o <- system(paste("R -q --vanilla -f", tf), intern=TRUE)
 cat(o, sep="\n")
 ```
-This corresponds to the result above using horizontal grid shift.
 
 ```{r}
 lines <- c(
