@@ -11,7 +11,7 @@ theme: united
 
 Video https://www.youtube.com/watch?v=o0yMeb_UdE4&list=PLzREt6r1NenmWEidssmLm-VO_YmAh4pq9&index=2, but see post-workshop note early in the updated document
 
-### [Updated workshop document](https://rsbivand.github.io/csds_jan23/csds_crs_workshop_230130.html)
+### [Updated workshop document](https://rsbivand.github.io/csds_jan23/csds_crs_workshop_230131.html)
 
 ### [Study group document](https://rsbivand.github.io/csds_jan23/bivand_csds_ssg_230117.pdf)
 

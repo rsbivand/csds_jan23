@@ -572,7 +572,7 @@ rnaturalearth::countries110 |>
 hook <- function() {
         plot(us, col = NA, add = TRUE)
 }
-r <- stars::read_stars("us_noaa_conus.tif")
+r <- stars::read_stars("https://cdn.proj.org/us_noaa_conus.tif")
 plot(r[,,,1:2], axes = TRUE, hook = hook, key.pos = 4, col=cm.colors)
 ```
 
