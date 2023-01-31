@@ -190,7 +190,7 @@ The 1970s saw the first military global navigation satellite systems, all classi
 
 Datum transformation from the standards used by national mapping agencies to WGS84 became important, because without this, placing GPS/WGS84 positions on legacy maps was rather hit-and-miss. Some of us may recall that paper maps advertised GPS coordinates (axes were additionally printed in WGS84 degrees). This also affects web mapping, as the typical workflow is to transform the user coordinate reference system to a WGS84 geographical coordinate system, then on to the deservedly much abused Web Mercator projection. If the user coordinate reference system is unknown or inaccurate, the placing of observations on a web map becomes embarrassing as the viewer zooms in.
 
-_Warning: January 19 version goes astray here:_ the local default user-writable directory containing the cache file is not empty:
+_Warning: January 19 version goes astray here:_ the local default user-writable directory containing the cache file was then not empty:
 
 ```{r}
 (pths <- sf::sf_proj_search_paths())
@@ -202,12 +202,11 @@ list.files(pths[1])
 
 ```{r}
 library(RSQLite)
+if (length(list.files(pths[1])) > 0L) {
 db <- dbConnect(SQLite(), dbname=file.path(pths[1], "cache.db"))
 unique(dbReadTable(db, "chunks")$url)
-```
-
-```{r}
 dbDisconnect(db)
+}
 ```
 
 _So the presentation of January 19 started using `us_noaa_conus.tif` because it was available in the current working directory for a figure below and in the local default user-writable directory, but did not obtain the full accuracy that the NAD83 (HARN) grid made available._
